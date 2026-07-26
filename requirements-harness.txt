@@ -1,0 +1,26 @@
+# =====================================================================
+#  Tier 2 — OPTIONAL gold-standard harness integrations
+#  Install only if you want the lm-eval / EvalPlus paths
+#  (higher-fidelity scoring, loglikelihood-based MCQ).
+#
+#  >>> Use Python 3.11 or 3.12 for these. <<<
+#  Heavy wheels (torch, numba, safetensors) frequently do NOT build on
+#  Python 3.14 yet. The builtin engine (requirements.txt) needs none of
+#  them and is the recommended default on Python 3.14.
+# =====================================================================
+
+# EleutherAI lm-evaluation-harness — 60+ benchmarks, loglikelihood MCQ.
+# Driven via its `local-completions` / `local-chat-completions` model type,
+# pointed at Ollama Cloud's base_url + auth token.
+lm-eval>=0.4.5
+
+# EvalPlus — HumanEval+ / MBPP+ (augmented test suites, pass@1/5/10/100).
+# Supports --base-url / --api-key for any OpenAI-compatible endpoint.
+evalplus>=0.3.2
+
+# Tokenizer required by lm-eval's local-completions logprobs path
+# (so it can map Cloud responses onto HF token ids).
+transformers>=4.45.0
+
+# SWE-bench evaluation harness (optional, needs Docker Desktop).
+# swe-bench>=2.0.0

@@ -1,0 +1,279 @@
+benchmarks:
+  mmlu:
+    cot: true
+    kind: mcq
+    engine: builtin
+    dataset: cais/mmlu
+    config: all
+    split: test
+    n_shot: 5
+    metric: acc
+    limit: null
+  mmlu_pro:
+    kind: mcq
+    engine: builtin
+    dataset: TIGER-Lab/MMLU-Pro
+    config: default
+    split: validation
+    n_shot: 5
+    metric: acc
+    limit: null
+  arc_challenge:
+    kind: mcq
+    engine: builtin
+    dataset: allenai/ai2_arc
+    config: ARC-Challenge
+    split: test
+    n_shot: 25
+    metric: acc_norm
+    limit: null
+  hellaswag:
+    kind: mcq
+    engine: builtin
+    dataset: Rowan/hellaswag
+    config: default
+    split: validation
+    n_shot: 0
+    metric: acc_norm
+    limit: null
+  winogrande:
+    kind: mcq
+    engine: builtin
+    dataset: allenai/winogrande
+    config: winogrande_xl
+    split: validation
+    n_shot: 5
+    metric: acc
+    limit: null
+  truthfulqa:
+    kind: mcq
+    engine: builtin
+    dataset: truthfulqa/truthful_qa
+    config: multiple_choice
+    split: validation
+    n_shot: 0
+    metric: mc1
+    limit: null
+  gpqa:
+    kind: mcq
+    engine: builtin
+    dataset: Idavidrein/gpqa
+    config: gpqa_main
+    split: train
+    n_shot: 0
+    metric: acc
+    cot: true
+    limit: null
+  bbh:
+    kind: mcq
+    engine: builtin
+    dataset: lukaemon/bbh
+    config: ''
+    split: test
+    n_shot: 3
+    metric: acc
+    limit: null
+  gsm8k:
+    cot: true
+    kind: math
+    engine: builtin
+    dataset: openai/gsm8k
+    config: main
+    split: test
+    n_shot: 8
+    metric: acc
+    limit: null
+  math:
+    kind: math
+    engine: builtin
+    dataset: EleutherAI/hendrycks_math
+    config: algebra
+    split: test
+    n_shot: 4
+    metric: acc
+    limit: null
+  humaneval:
+    kind: code
+    engine: builtin
+    dataset: openai/openai_humaneval
+    config: default
+    split: test
+    n_shot: 0
+    metric: pass@1
+    samples_per_task: 1
+    limit: null
+  mbpp:
+    kind: code
+    engine: builtin
+    dataset: google-research-datasets/mbpp
+    config: full
+    split: test
+    n_shot: 0
+    metric: pass@1
+    samples_per_task: 1
+    limit: null
+  humaneval_plus:
+    kind: code
+    engine: evalplus
+    dataset: HumanEval
+    metric: pass@1
+  mbpp_plus:
+    kind: code
+    engine: evalplus
+    dataset: MBPP
+    metric: pass@1
+  math_500:
+    kind: math
+    engine: builtin
+    dataset: HuggingFaceH4/MATH-500
+    split: test
+    n_shot: 0
+    metric: acc
+    limit: null
+  aime_2024:
+    kind: math
+    engine: builtin
+    dataset: HuggingFaceH4/aime_2024
+    split: train
+    n_shot: 0
+    metric: acc
+    limit: null
+  aime_2025:
+    kind: math
+    engine: builtin
+    dataset: MathArena/aime_2025
+    split: train
+    n_shot: 0
+    metric: acc
+    limit: null
+  simpleqa:
+    kind: math
+    engine: builtin
+    dataset: basicv8vc/SimpleQA
+    split: test
+    n_shot: 0
+    metric: acc
+    limit: null
+  hle:
+    kind: math
+    engine: builtin
+    dataset: cais/hle
+    split: test
+    n_shot: 0
+    metric: acc
+    limit: null
+  livecodebench:
+    kind: code_io
+    engine: builtin
+    dataset: livecodebench/code_generation_lite
+    split: test
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  bigcodebench:
+    kind: code
+    engine: builtin
+    dataset: bigcode/bigcodebench
+    split: v2
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  swebench_lite:
+    kind: agent_swe
+    engine: builtin
+    dataset: princeton-nlp/SWE-bench_Lite
+    split: test
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  swebench_verified:
+    kind: agent_swe
+    engine: builtin
+    dataset: princeton-nlp/SWE-bench_Verified
+    split: test
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  bfcl:
+    kind: agent_bfcl
+    engine: builtin
+    dataset: gorilla-llm/Berkeley-Function-Calling-Leaderboard
+    split: test
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  gaia:
+    kind: agent_gaia
+    engine: builtin
+    dataset: gaia-benchmark/GAIA
+    config: 2023_all
+    split: validation
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  swe_gym:
+    kind: agent_swe
+    engine: builtin
+    dataset: SWE-gym/SWE-gym
+    split: test
+    n_shot: 0
+    metric: pass@1
+    limit: null
+  mixeval:
+    kind: mcq
+    engine: builtin
+    dataset: MixEval/MixEval
+    split: test
+    n_shot: 0
+    metric: acc
+    limit: null
+  gpqa_diamond:
+    kind: mcq
+    engine: builtin
+    dataset: Idavidrein/gpqa
+    config: gpqa_diamond
+    split: train
+    n_shot: 0
+    metric: acc
+    cot: true
+    limit: null
+  aime_2026:
+    kind: math
+    engine: builtin
+    dataset: MathArena/aime_2026
+    split: train
+    n_shot: 0
+    metric: acc
+    limit: null
+  ifeval:
+    kind: mcq
+    engine: builtin
+    dataset: google/IFEval
+    split: train
+    n_shot: 0
+    metric: acc
+    limit: null
+  musr:
+    kind: mcq
+    engine: builtin
+    dataset: TAUR-Lab/MuSR
+    split: test
+    n_shot: 0
+    metric: acc
+    limit: null
+quick_limits:
+  mmlu: 12
+  arc_challenge: 50
+  hellaswag: 50
+  gsm8k: 8
+  humaneval: 10
+  mbpp: 10
+  math_500: 25
+  livecodebench: 10
+  swebench_verified: 5
+  swe_gym: 5
+  mixeval: 10
+  gpqa_diamond: 5
+  aime_2026: 5
+  ifeval: 10
+  musr: 5
