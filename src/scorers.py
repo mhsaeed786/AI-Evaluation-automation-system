@@ -120,8 +120,13 @@ def score_mcq(client, model, item, *, shots, cot, temperature, max_tokens) -> di
         return {"correct": pred == gold_letter, "predicted": pred, "method": "logprob"}
 
     # Endpoint gave no usable top_logprobs — fall back to generate + parse.
-    pred = client.answer_letter_generate(model=model, prompt_messages=msgs, letters=letters)
-    return {"correct": pred == gold_letter, "predicted": pred, "method": "generate_fallback"}
+    # Reasoning models may emit a long chain-of-thought before the answer
+    # letter, so give them room and parse the last letter in the output.
+    text = client.chat_text(model=model, messages=msgs, temperature=temperature,
+                            max_tokens=max(max_tokens, 256))
+    pred = _parse_letter(text, letters)
+    return {"correct": pred == gold_letter, "predicted": pred,
+            "method": "generate_fallback", "raw": text[:200]}
 
 
 # ======================================================================

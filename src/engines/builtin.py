@@ -101,6 +101,8 @@ def run_builtin(client: OllamaCloudClient, model: str, name: str, spec: dict, *,
     errors: list[str] = []
     samples: list[dict] = []
 
+    consecutive_api_errors = 0
+    MAX_API_ERRORS = 5  # skip rest of benchmark after this many consecutive API errors
     for idx, item in enumerate(tqdm(items, desc=f"{model}/{name}", unit="q", disable=bool(os.environ.get("OLLAMA_EVAL_QUIET")))):
         try:
             if kind == "mcq":
@@ -136,8 +138,20 @@ def run_builtin(client: OllamaCloudClient, model: str, name: str, spec: dict, *,
                 samples.append({"id": item.get("id"), **{k: v for k, v in res.items()
                                 if k != "raw"}})
         except Exception as e:  # noqa: BLE001 -- keep the run alive
-            errors.append(f"item {item.get('id')}: {type(e).__name__}: {e}")
+            err_msg = f"item {item.get('id')}: {type(e).__name__}: {e}"
+            errors.append(err_msg)
             log.debug("item error %s: %s", item.get("id"), e)
+            # Track consecutive API errors to avoid burning quota on a dead key
+            if any(k in str(e).__class__.__name__ for k in ("RateLimit", "Payment", "402", "429")):
+                consecutive_api_errors += 1
+            elif type(e).__name__ in ("RateLimitError", "APIStatusError"):
+                consecutive_api_errors += 1
+            else:
+                consecutive_api_errors = 0
+            if consecutive_api_errors >= MAX_API_ERRORS:
+                errors.append(f"aborting {name}: {consecutive_api_errors} consecutive API errors")
+                log.warning("Aborting %s/%s after %d consecutive API errors", model, name, consecutive_api_errors)
+                break
 
     score = (correct / evaluated) if evaluated else float("nan")
     metric = spec.get("metric", "acc")
