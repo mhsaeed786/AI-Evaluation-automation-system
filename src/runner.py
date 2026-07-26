@@ -61,20 +61,45 @@ def _curated_entry(cfg, model_id: str) -> dict | None:
     return None
 
 
+_NON_TEXT = ("whisper", "-tts", "tts-", "speech", "orpheus", "audio",
+             "stable-diffusion", "sora", "dall-e", "embedding", "-embed",
+             "guard", "classify", "moderation", "rerank", "-image", "i2v",
+             "t2v", "r2v", "video", "-wan", "happyhorse", "flux", "diffus",
+             "sdxl", "-vl", "-vision", "guardrail", "-gguf", "transcribe")
+
+
+def _is_text_model(model_id: str) -> bool:
+    m = (model_id or "").lower()
+    return not any(b in m for b in _NON_TEXT)
+
+
 def resolve_models(cfg, client, models_arg: str, provider_name: str = "ollama") -> list[str]:
+    """Resolve the model list for a provider, honouring the curated per-provider
+    lists in config/providers.yaml and the free/paid + text-only filters."""
     prov = provider_name.lower()
     if models_arg in ("auto", "all"):
-        live = client.list_models()
-        if not live:
-            console.print(f"[red]No live models returned for provider '{provider_name}'.[/red]")
+        try:
+            live = client.list_models()
+        except Exception as e:  # noqa: BLE001
+            log.warning("model discovery failed for %s: %s", prov, e)
+            live = []
+        pm = cfg.models.get("provider_models", {})
+        if prov in pm:
+            entry = pm[prov]
+            if entry == "auto":                 # paid: all live models
+                cand = live
+            else:                               # free: curated list (intersect live)
+                cand = [m for m in entry if (not live or m in live)] or list(entry)
+        else:
+            cand = live
+        if prov == "openrouter":                # free tier: :free models only
+            cand = [m for m in cand if m.endswith(":free")]
+        cand = [m for m in cand if _is_text_model(m)]
+        if not cand:
+            console.print(f"[yellow][{provider_name}] No usable models after tier/text filters.[/yellow]")
             return []
-        if prov == "openrouter":
-            free_live = [m for m in live if m.endswith(":free") or m == "openrouter/free"]
-            if free_live:
-                live = free_live
-                console.print(f"[green][{provider_name}] Strict Free Tier Filter: {len(live)} free model(s) selected[/green]")
-        console.print(f"[green][{provider_name}] Discovered {len(live)} live model(s):[/green] {', '.join(live[:8])}{' ...' if len(live)>8 else ''}")
-        return sorted(live)
+        console.print(f"[green][{provider_name}] Using {len(cand)} model(s):[/green] {', '.join(cand[:8])}{' ...' if len(cand)>8 else ''}")
+        return sorted(set(cand))
 
     wanted = [m.strip() for m in models_arg.split(",") if m.strip()]
     return wanted
@@ -210,13 +235,18 @@ def main(argv=None) -> int:
 
     cfg = load_config()
 
-    target_providers = (list(PROVIDERS.keys()) if args.provider.lower() == "all"
-                        else [p.strip() for p in args.provider.split(",") if p.strip()])
+    pm = cfg.models.get("provider_models", {})
+    if args.provider.lower() == "all":
+        target_providers = [p for p in PROVIDERS if p in pm]
+    else:
+        target_providers = [p.strip() for p in args.provider.split(",") if p.strip()]
 
     runnable = [p for p in target_providers if get_provider_credentials(p)[1]]
     for p in target_providers:
         if p not in runnable:
             console.print(f"[yellow]Skipping provider '{p}': API key not set in .env[/yellow]")
+    if args.provider.lower() == "all":
+        console.print(f"[green]Curated providers ({len(runnable)}):[/green] {', '.join(runnable)}")
 
     if not runnable:
         console.print("[red]No providers with an API key configured. Edit .env and retry.[/red]")

@@ -1,0 +1,61 @@
+provider_models:
+  ollama: auto
+  qwen: auto
+  groq:
+  - llama-3.3-70b-versatile
+  - openai/gpt-oss-120b
+  - openai/gpt-oss-20b
+  - qwen/qwen3.6-27b
+  - groq/compound
+  - groq/compound-mini
+  - allam-2-7b
+  - llama-3.1-8b-instant
+  openrouter:
+  - nvidia/nemotron-3-ultra-550b-a55b:free
+  - nvidia/nemotron-3-super-120b-a12b:free
+  - openai/gpt-oss-20b:free
+  - google/gemma-4-26b-a4b-it:free
+  - google/gemma-4-31b-it:free
+  - cohere/north-mini-code:free
+  - nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+  - inclusionai/ling-3.0-flash:free
+  - poolside/laguna-m.1:free
+  - nvidia/nemotron-3.5-content-safety:free
+  cerebras:
+  - gpt-oss-120b
+  - gemma-4-31b
+  - zai-glm-4.7
+  hf:
+  - nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4
+  - nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16
+  - deepseek-ai/DeepSeek-V4-Pro
+  - meta-llama/Llama-3.3-70B-Instruct
+  - openai/gpt-oss-120b
+  - Qwen/Qwen3.5-397B-A17B
+  - moonshotai/Kimi-K2.7-Code
+  - CohereLabs/c4ai-command-a-03-2025
+  - meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+  - meta-llama/Llama-4-Scout-17B-16E-Instruct
+  cohere:
+  - command-r-plus-08-2024
+  - command-a-plus-05-2026
+  - c4ai-aya-expanse-32b
+  - command-a-03-2025
+  - command-a-reasoning-08-2025
+  - north-mini-code-1-0
+  - command-a-translate-08-2025
+  - tiny-aya-fire
+  - tiny-aya-water
+  - command-r-08-2024
+  glm: auto
+  gemini:
+  - gemini-2.5-pro
+  - gemma-4-26b-a4b-it
+  - gemini-2.5-flash
+  - gemini-2.0-flash-001
+  - gemini-2.5-computer-use-preview-10-2025
+  - gemini-2.0-flash
+  - gemini-2.5-flash-lite
+  - gemini-2.0-flash-lite
+  - gemma-4-31b-it
+  - gemini-2.0-flash-lite-001

@@ -117,12 +117,17 @@ def load_config(env_path: Path | None = None, *, require_key: bool = True) -> Co
         timeout=float(os.environ.get("OLLAMA_TIMEOUT", "180")),
     )
 
+    models_cfg = _load_yaml(CONFIG_DIR / "models.yaml")
+    providers_yaml_path = CONFIG_DIR / "providers.yaml"
+    if providers_yaml_path.exists():
+        models_cfg.setdefault("provider_models", {}).update(
+            _load_yaml(providers_yaml_path).get("provider_models", {}))
     cfg = Config(
         api_key=api_key,
         base_url=base_url,
         org_id=org_id,
         sampling=sampling,
-        models=_load_yaml(CONFIG_DIR / "models.yaml"),
+        models=models_cfg,
         benchmarks=_load_yaml(CONFIG_DIR / "benchmarks.yaml"),
         published_scores=_load_yaml(CONFIG_DIR / "published_scores.yaml"),
     )
@@ -153,9 +158,11 @@ PROVIDERS = {
     "novita":     ("openai",    "NOVITA_BASE_URL",     "NOVITA_API_KEY",     "https://api.novita.ai/v3/openai"),
     "perplexity": ("openai",    "PERPLEXITY_BASE_URL", "PERPLEXITY_API_KEY", "https://api.perplexity.ai"),
     "cohere":     ("openai",    "COHERE_BASE_URL",     "COHERE_API_KEY",     "https://api.cohere.ai/compatibility/v1"),
-    "glm":        ("openai",    "GLM_BASE_URL",        "GLM_API_KEY",        "https://open.bigmodel.cn/api/paas/v4"),
+    "glm":        ("openai",    "GLM_BASE_URL",        "GLM_API_KEY",        "https://api.z.ai/api/coding/paas/v4"),
     "poe":        ("openai",    "POE_BASE_URL",        "POE_API_KEY",        "https://api.poe.com/v1"),
-    "gemini":     ("gemini",    "GEMINI_BASE_URL",     "GEMINI_API_KEY",     "https://generativelanguage.googleapis.com/v1beta"),
+    "vercel":     ("openai",    "VERCEL_BASE_URL",     "VERCEL_API_KEY",     "https://ai-gateway.vercel.com/v1"),
+    "thinkingmachines": ("openai", "THINKING_MACHINES_BASE_URL", "THINKING_MACHINES_API_KEY", "https://api.thinkingmachines.ai/v1"),
+    "gemini":     ("openai",    "GEMINI_BASE_URL",     "GEMINI_API_KEY",     "https://generativelanguage.googleapis.com/v1beta/openai"),
     "anthropic":  ("anthropic", "ANTHROPIC_BASE_URL",  "ANTHROPIC_API_KEY",  "https://api.anthropic.com"),
 }
 
