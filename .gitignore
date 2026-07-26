@@ -1,0 +1,51 @@
+# =====================================================================
+#  Secrets — NEVER commit
+# =====================================================================
+.env
+.env.local
+*.key
+*.pem
+
+# =====================================================================
+#  Local scratch / ad-hoc probe scripts (frequently contain credentials).
+#  Anchored to repo root so they never match src/ or tests/ packages.
+# =====================================================================
+/_probe*.py
+/_db*.py
+/_test*.py
+/_live*.py
+/_tmp*.py
+/test_api*.py
+/scratch/
+
+# =====================================================================
+#  Python
+# =====================================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =====================================================================
+#  Results, reports, downloaded datasets, logs — all regenerable.
+#  (reports/ may embed provider error text, so keep it local too.)
+# =====================================================================
+results/
+reports/
+data/cache/
+*.jsonl.gz
+hf_datasets_cache/
+logs/
+
+# =====================================================================
+#  OS / editor junk
+# =====================================================================
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

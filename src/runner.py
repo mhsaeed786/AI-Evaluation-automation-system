@@ -1,0 +1,229 @@
+"""Top-level runner / CLI.
+
+Examples
+--------
+    # Discover live models, run a fast end-to-end check:
+    python -m src.runner --models auto --benchmarks mmlu,gsm8k,humaneval --quick
+
+    # Full run of every configured benchmark on every live model:
+    python -m src.runner --models auto --benchmarks all
+
+    # One specific model, the coding profile:
+    python -m src.runner --models qwen3-coder --benchmarks coding
+
+    # Drive benchmarks through the lm-eval harness instead of the builtin engine:
+    python -m src.runner --models deepseek-v3 --benchmarks mmlu,gpqa --engine lm_eval
+"""
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+
+from rich.console import Console
+from rich.table import Table
+
+from .config import load_config
+from .ollama_client import OllamaCloudClient
+from .results import save_result, ResultRecord
+from .engines import run_builtin
+
+console = Console()
+log = logging.getLogger("ollama_eval.runner")
+
+
+# ----------------------------------------------------------------------
+# Plan resolution
+# ----------------------------------------------------------------------
+def _profile_benchmarks(cfg, profile_names: list[str]) -> list[str]:
+    profiles = cfg.models.get("profiles", {})
+    out, seen = [], set()
+    for p in profile_names:
+        for b in profiles.get(p, {}).get("benchmarks", []):
+            if b not in seen:
+                seen.add(b)
+                out.append(b)
+    return out
+
+
+def _curated_entry(cfg, model_id: str) -> dict | None:
+    for m in cfg.models.get("models", []):
+        if m["id"] == model_id:
+            return m
+    return None
+
+
+def resolve_models(cfg, client, models_arg: str, provider_name: str = "ollama") -> list[str]:
+    prov = provider_name.lower()
+    if models_arg in ("auto", "all"):
+        live = client.list_models()
+        if not live:
+            console.print(f"[red]No live models returned for provider '{provider_name}'.[/red]")
+            return []
+
+        # Strictly enforce free tier filter for free providers (e.g., OpenRouter)
+        if prov == "openrouter":
+            free_live = [m for m in live if m.endswith(":free") or m == "openrouter/free"]
+            if free_live:
+                live = free_live
+                console.print(f"[green][{provider_name}] Strict Free Tier Filter: {len(live)} free model(s) selected[/green]")
+
+        console.print(f"[green][{provider_name}] Discovered {len(live)} live model(s):[/green] {', '.join(live[:8])}{' ...' if len(live)>8 else ''}")
+        return sorted(live)
+
+    wanted = [m.strip() for m in models_arg.split(",") if m.strip()]
+    return wanted
+
+
+def resolve_benchmarks(cfg, models, benchmarks_arg: str) -> dict[str, list[str]]:
+    """Return {model_id: [benchmark names]}."""
+    all_bench = list(cfg.benchmarks.get("benchmarks", {}).keys())
+    profiles = cfg.models.get("profiles", {})
+    default_profile = cfg.models.get("default_profile", "general")
+
+    if benchmarks_arg == "all":
+        return {m: list(all_bench) for m in models}
+
+    if benchmarks_arg in profiles:  # a profile name
+        bs = _profile_benchmarks(cfg, [benchmarks_arg])
+        return {m: bs for m in models}
+
+    # Explicit comma list -> same set for every model.
+    explicit = [b.strip() for b in benchmarks_arg.split(",") if b.strip()]
+    unknown = [b for b in explicit if b not in all_bench]
+    if unknown:
+        console.print(f"[yellow]Unknown benchmark(s) (skipping):[/yellow] {', '.join(unknown)}")
+    explicit = [b for b in explicit if b in all_bench]
+    return {m: list(explicit) for m in models}
+
+
+def benchmark_set_per_model(cfg, models, benchmarks_arg: str) -> dict[str, list[str]]:
+    """If benchmarks_arg == 'per_profile', use each model's own profiles."""
+    if benchmarks_arg == "per_profile":
+        out = {}
+        for m in models:
+            entry = _curated_entry(cfg, m)
+            profs = entry["profiles"] if entry and entry.get("profiles") else \
+                [cfg.models.get("default_profile", "general")]
+            out[m] = _profile_benchmarks(cfg, profs)
+        return out
+    return resolve_benchmarks(cfg, models, benchmarks_arg)
+
+
+# ----------------------------------------------------------------------
+# Engine dispatch
+# ----------------------------------------------------------------------
+def run_one(cfg, client, model, benchmark, *, quick, engine):
+    spec = cfg.benchmark(benchmark)
+    if engine == "builtin":
+        rec = run_builtin(client, model, benchmark, spec, quick=quick,
+                          quick_table=cfg.benchmarks.get("quick_limits", {}),
+                          seed=cfg.sampling.seed, temperature=cfg.sampling.temperature)
+    elif engine == "lm_eval":
+        from harnesses.lm_eval_runner import run_lm_eval  # lazy import
+        rec = run_lm_eval(cfg, client, model, benchmark, spec, quick=quick)
+    elif engine == "evalplus":
+        from harnesses.evalplus_runner import run_evalplus  # lazy import
+        rec = run_evalplus(cfg, client, model, benchmark, spec, quick=quick)
+    else:
+        raise SystemExit(f"Unknown engine '{engine}'")
+    return rec
+
+
+# ----------------------------------------------------------------------
+# CLI
+# ----------------------------------------------------------------------
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(prog="ollama-eval", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--provider", default="ollama",
+                    help="provider name (ollama, qwen, groq, openrouter, cerebras, hf, glm, poe, all)")
+    ap.add_argument("--models", default="auto",
+                    help="comma list, 'auto' (live /v1/models), or 'all'")
+    ap.add_argument("--benchmarks", default="mmlu,gsm8k",
+                    help="comma list, 'all', a profile name (general/coding/reasoning), "
+                         "or 'per_profile'")
+    ap.add_argument("--engine", default="builtin", choices=["builtin", "lm_eval", "evalplus"])
+    ap.add_argument("--quick", action="store_true",
+                    help="use small per-benchmark limits for a fast end-to-end check")
+    ap.add_argument("--log-level", default="INFO")
+    args = ap.parse_args(argv)
+
+    logging.basicConfig(level=args.log_level.upper(),
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+    cfg = load_config()
+
+    from .config import get_provider_credentials, PROVIDERS
+    target_providers = list(PROVIDERS.keys()) if args.provider.lower() == "all" else [p.strip() for p in args.provider.split(",") if p.strip()]
+
+    finished: list[ResultRecord] = []
+
+    for prov in target_providers:
+        url, key = get_provider_credentials(prov)
+        if not key:
+            console.print(f"[yellow]Skipping provider '{prov}': API key not set in .env[/yellow]")
+            continue
+        console.rule(f"[bold magenta]Provider: {prov.upper()} ({url})[/bold magenta]")
+        client = OllamaCloudClient(
+            url, key, timeout=cfg.sampling.timeout,
+            seed=cfg.sampling.seed, temperature=cfg.sampling.temperature, org_id=cfg.org_id,
+        )
+
+        try:
+            models = resolve_models(cfg, client, args.models, provider_name=prov)
+        except Exception as e:
+            console.print(f"[red]Failed to resolve models for provider '{prov}': {e}[/red]")
+            continue
+
+        plan = benchmark_set_per_model(cfg, models, args.benchmarks)
+        total, done = sum(len(v) for v in plan.values()), 0
+
+        for model in models:
+            for benchmark in plan[model]:
+                done += 1
+                console.print(f"\n[bold][{done}/{total}][/bold] [{prov}] {model}  •  {benchmark}  "
+                              f"({args.engine})")
+                try:
+                    rec = run_one(cfg, client, model, benchmark,
+                                  quick=args.quick, engine=args.engine)
+                    path = save_result(rec)
+                    finished.append(rec)
+                    if rec.n_items:
+                        console.print(f"  -> {rec.metric}={rec.percent}% "
+                                      f"(n={rec.n_items}, errors={len(rec.errors)})  "
+                                      f"[dim]{path.name}[/dim]")
+                    else:
+                        console.print(f"  -> [yellow]no items evaluated[/yellow] "
+                                      f"({rec.errors[-1] if rec.errors else 'unknown'})")
+                except KeyboardInterrupt:
+                    console.print("[red]Interrupted.[/red]")
+                    return 130
+                except Exception as e:  # noqa: BLE001
+                    log.exception("%s/%s failed", model, benchmark)
+                    console.print(f"  -> [red]FAILED[/red] {type(e).__name__}: {e}")
+
+    _print_summary(finished)
+    return 0
+
+
+def _print_summary(records: list[ResultRecord]) -> None:
+    if not records:
+        console.print("\n[dim]No completed records.[/dim]")
+        return
+    t = Table(title="Summary", show_lines=True)
+    t.add_column("Model", style="cyan")
+    t.add_column("Benchmark")
+    t.add_column("Metric")
+    t.add_column("Score", justify="right", style="green")
+    t.add_column("n", justify="right")
+    for r in records:
+        if r.n_items:
+            t.add_row(r.model, r.benchmark, r.metric, f"{r.percent}%", str(r.n_items))
+        else:
+            t.add_row(r.model, r.benchmark, r.metric, "—", "0")
+    console.print(t)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

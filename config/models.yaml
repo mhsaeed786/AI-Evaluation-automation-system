@@ -1,0 +1,231 @@
+# =====================================================================
+#  Model registry — multi-provider
+#  (Ollama Cloud / Qwen / Groq / OpenRouter / Cerebras / HF / GLM)
+# =====================================================================
+# This is a CURATED REFERENCE of models that have appeared on each provider.
+# It is NOT authoritative:
+#   - The runner reconciles this list against the LIVE model list returned by
+#     GET /v1/models for the selected provider (see src/smoke_test.py).
+#   - If a model below is absent from your live list, it is skipped.
+#   - If your live list contains models NOT below, they are included
+#     automatically under the "default_profile" profile (see profiles).
+#
+# Update the `advertised:` scores from each model's official model card
+# before drawing vendor comparisons (see published_scores.yaml).
+# =====================================================================
+
+default_profile: general
+
+profiles:
+  general:  &general
+    benchmarks:
+      - mmlu
+      - mmlu_pro
+      - arc_challenge
+      - hellaswag
+      - winogrande
+      - truthfulqa
+      - gsm8k
+      - gpqa
+      - bbh
+      - agieval
+      - math
+  coding:   &coding
+    benchmarks:
+      - humaneval
+      - mbpp
+      - livecodebench
+      - aider_polyglot
+      - bigcodebench
+      - swebench_verified
+      - swebench_lite
+      - deepswe
+      - bfcl
+
+  agent_swe: &agent_swe
+    benchmarks:
+      - swebench_verified
+      - swebench_lite
+      - deepswe
+      - swe_gym
+      - swebench_pro
+  agent_general: &agent_general
+    benchmarks:
+      - gaia
+      - tau_bench
+      - terminalbench
+      - osworld
+      - intercode
+      - cybench
+      - mle_bench
+      - webarena
+      - ctfbench
+      - bfcl
+      - arc_agi_2
+  long_context: &long_context
+    benchmarks:
+      - ruler
+      - hle
+  math_hard: &math_hard
+    benchmarks:
+      - math_500
+      - aime_2024
+      - aime_2025
+      - aime_2026
+      - olympiadbench
+      - frontiermath
+  reasoning: &reasoning
+    benchmarks:
+      - gpqa
+      - gpqa_diamond
+      - mmlu_pro
+      - bbh
+      - math
+      - gsm8k
+      - mixeval
+      - ifeval
+      - arena_hard
+      - musr
+
+# Provider Tier Policy
+# Paid providers: ollama (Ollama Cloud Pro), qwen (Qwen Cloud), glm (Z.AI Coding Plan)
+# Free providers: openrouter, groq, cerebras, hf, poe, cohere (Strictly FREE models only)
+provider_tiers:
+  paid:
+    - ollama
+    - qwen
+    - glm
+  free:
+    - openrouter
+    - groq
+    - cerebras
+    - hf
+    - poe
+    - cohere
+
+models:
+  # --- Ollama Cloud Models ---------------------------------------
+  - id: gpt-oss:120b
+    family: gpt-oss
+    profiles: [general, coding, reasoning]
+    context: 128000
+  - id: gpt-oss:20b
+    family: gpt-oss
+    profiles: [general, coding, reasoning]
+    context: 128000
+  - id: deepseek-v4-flash
+    family: deepseek
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: deepseek-v4-pro
+    family: deepseek
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: gemma4:31b
+    family: gemma
+    profiles: [general, reasoning]
+    context: 128000
+
+  # --- Qwen Cloud (Alibaba MaaS) ----------------------------------
+  - id: qwen3.8-max-preview
+    family: qwen
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: qwen3.7-max
+    family: qwen
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: qwen3.7-plus
+    family: qwen
+    profiles: [general, reasoning]
+    context: 128000
+  - id: qwen3.6-flash
+    family: qwen
+    profiles: [general, coding]
+    context: 128000
+
+  # --- Groq Cloud ------------------------------------------------
+  - id: llama-3.3-70b-versatile
+    family: llama
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: llama-3.1-8b-instant
+    family: llama
+    profiles: [general]
+    context: 128000
+  - id: qwen/qwen3.6-27b
+    family: qwen
+    profiles: [general, coding]
+    context: 128000
+  - id: openai/gpt-oss-20b
+    family: gpt-oss
+    profiles: [general, reasoning]
+    context: 128000
+  - id: groq/compound
+    family: groq
+    profiles: [general, reasoning]
+    context: 128000
+
+  # --- OpenRouter Free Tier & Routers -----------------------------
+  - id: openrouter/free
+    family: openrouter
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: meta-llama/llama-3.3-70b-instruct:free
+    family: llama
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: google/gemma-4-31b-it:free
+    family: gemma
+    profiles: [general, reasoning]
+    context: 128000
+  - id: qwen/qwen3-coder:free
+    family: qwen
+    profiles: [coding]
+    context: 128000
+  - id: poolside/laguna-s-2.1:free
+    family: poolside
+    profiles: [general, coding]
+    context: 128000
+
+  # --- Cerebras Cloud --------------------------------------------
+  - id: gemma-4-31b
+    family: gemma
+    profiles: [general, reasoning]
+    context: 128000
+  - id: gpt-oss-120b
+    family: gpt-oss
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: zai-glm-4.7
+    family: glm
+    profiles: [general, reasoning]
+    context: 128000
+
+  # --- HuggingFace Router -----------------------------------------
+  - id: thinkingmachines/Inkling
+    family: thinkingmachines
+    profiles: [general, reasoning, coding]
+    context: 1000000
+  - id: zai-org/GLM-5.2
+    family: glm
+    profiles: [general, reasoning, coding]
+    context: 128000
+
+  # --- GLM Z.AI ---------------------------------------------------
+  - id: glm-5.2
+    family: glm
+    profiles: [general, reasoning, coding]
+    context: 128000
+  - id: glm-5.1
+    family: glm
+    profiles: [general, reasoning]
+    context: 128000
+  - id: glm-4.7
+    family: glm
+    profiles: [general, reasoning]
+    context: 128000
+  - id: glm-4.5
+    family: glm
+    profiles: [general, coding]
+    context: 128000

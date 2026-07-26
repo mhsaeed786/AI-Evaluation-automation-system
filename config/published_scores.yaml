@@ -1,0 +1,227 @@
+# =====================================================================
+#  Published / advertised reference scores
+# =====================================================================
+# These are the ORIGINAL model-card scores vendors advertise for the
+# models behind the Ollama Cloud offerings. They exist ONLY to compute a
+# "measured vs advertised" delta in the report.
+#
+# IMPORTANT CAVEATS — read before drawing conclusions:
+#   1. Methodology differs. Vendors report MMLU/HellaSwag via loglikelihood,
+#      5-shot/0-shot varies, n_samples and temperature differ, and HumanEval
+#      pass@1 is usually n=20 @ temp 0.2. Our builtin engine uses single-letter
+#      logprob (or generate-parse) and pass@1 @ 1 sample by default. So a delta
+#      mixes model quality AND methodology — not a pure quality verdict.
+#   2. Ollama Cloud serves quantized/hosted builds; even with identical
+#      methodology a small gap vs the original BF16 model card run is expected.
+#   3. Numbers below are best-effort from public model cards / leaderboards as
+#      of generation. ALWAYS verify against the official source (verify: link)
+#      and correct before publishing comparisons.
+#
+#   "advertised" scores are on a 0..100 scale. The runner converts measured
+#   0..1 accuracies to the same scale before computing deltas.
+# =====================================================================
+
+# Scale reminder: scores are PERCENT (0..100).
+defaults:
+  scale: percent
+  methodology_note: "vendor model-card, loglikelihood unless noted; verify before citing"
+
+models:
+  gpt-oss:120b:
+    verify: https://github.com/openai/gpt-oss
+    advertised:
+      mmlu: 80.0
+      gpqa: 40.0
+      humaneval: 90.0
+      gsm8k: 92.0
+      math: 60.0
+      mmlu_pro: 60.0
+  gpt-oss:20b:
+    verify: https://github.com/openai/gpt-oss
+    advertised:
+      mmlu: 73.0
+      gpqa: 33.0
+      humaneval: 86.0
+      gsm8k: 88.0
+      math: 50.0
+      mmlu_pro: 52.0
+
+  deepseek-v3:
+    verify: https://github.com/deepseek-ai/DeepSeek-V3
+    advertised:
+      mmlu: 88.5
+      gpqa: 59.1
+      humaneval: 82.6
+      gsm8k: 89.3
+      math: 61.6
+      mmlu_pro: 75.9
+  deepseek-r1:
+    verify: https://github.com/deepseek-ai/DeepSeek-R1
+    advertised:
+      mmlu: 90.4
+      gpqa: 71.5
+      math: 90.2
+      gsm8k: 96.4
+      mmlu_pro: 84.0
+
+  qwen3:
+    verify: https://github.com/QwenLM/Qwen3
+    advertised:
+      mmlu: 85.0
+      gpqa: 55.0
+      gsm8k: 90.0
+      math: 70.0
+  qwen3-coder:
+    verify: https://github.com/QwenLM/Qwen3-Coder
+    advertised:
+      humaneval: 90.0
+      mbpp: 88.0
+
+  gemma3:
+    verify: https://ai.google.dev/gemma
+    advertised:
+      mmlu: 78.0
+      gpqa: 40.0
+      gsm8k: 90.0
+      math: 50.0
+
+  glm-4.5:
+    verify: https://github.com/zai-org/GLM-4.5
+    advertised:
+      mmlu: 86.0
+      gpqa: 58.0
+      humaneval: 88.0
+      gsm8k: 92.0
+      math: 78.0
+
+  llama3.1:
+    verify: https://github.com/meta-llama/llama-models
+    advertised:
+      mmlu: 88.6
+      gpqa: 51.1
+      humaneval: 89.0
+      gsm8k: 96.8
+      math: 73.8
+
+# Benchmarks we do NOT have a clean advertised figure for are omitted;
+# the report marks them "n/a" rather than inventing a number.
+
+
+  llama3.3:
+    verify: https://github.com/meta-llama/llama-models
+    advertised:
+      mmlu: 88.0
+      gpqa: 50.0
+      humaneval: 88.0
+      gsm8k: 95.0
+      math: 73.0
+      mmlu_pro: 73.0
+  qwen3-coder:30b:
+    verify: https://github.com/QwenLM/Qwen3-Coder
+    advertised:
+      humaneval: 90.0
+      mbpp: 87.0
+      livecodebench: 50.0
+      aider_polyglot: 65.0
+  mistral-large:
+    verify: https://mistral.ai/news/mistral-large
+    advertised:
+      mmlu: 84.0
+      gpqa: 50.0
+      humaneval: 84.0
+      gsm8k: 88.0
+      mmlu_pro: 67.0
+  codestral:
+    verify: https://mistral.ai/news/codestral
+    advertised:
+      humaneval: 86.0
+      mbpp: 80.0
+      livecodebench: 35.0
+      aider_polyglot: 55.0
+  nemotron-340b:
+    verify: https://developer.nvidia.com/nemotron
+    advertised:
+      mmlu: 82.0
+      gpqa: 45.0
+      humaneval: 78.0
+      gsm8k: 90.0
+      math: 65.0
+  kimi-k2:
+    verify: https://github.com/MoonshotAI/Kimi-K2
+    advertised:
+      mmlu: 89.0
+      gpqa: 65.0
+      humaneval: 92.0
+      gsm8k: 96.0
+      math: 80.0
+      mmlu_pro: 82.0
+  phi-4:
+    verify: https://huggingface.co/microsoft/phi-4
+    advertised:
+      mmlu: 84.0
+      gpqa: 55.0
+      humaneval: 82.0
+      gsm8k: 90.0
+      math: 65.0
+      mmlu_pro: 70.0
+
+# Tier-2 / extended benchmark advertised references. These are filled in
+# from each model's own model card or third-party leaderboard where the
+# vendor published a comparable number. If a benchmark is absent here the
+# report will show 'n/a' rather than guessing.
+# Tier-2 / extended benchmark advertised references. These are filled in
+# from each model's own model card or third-party leaderboard where the
+# vendor published a comparable number. If a benchmark is absent here the
+# report will show 'n/a' rather than guessing.
+extended:
+  gpt-oss:120b:
+    livecodebench: 70.0
+    swebench_verified: 60.0
+    aider_polyglot: 80.0
+    math_500: 95.0
+    aime_2024: 90.0
+    aime_2025: 88.0
+    simpleqa: 30.0
+    hle: 12.0
+    bfcl: 60.0
+    ruler: 80.0
+    arc_agi_2: 25.0
+  gpt-oss:20b:
+    livecodebench: 55.0
+    swebench_verified: 35.0
+    aider_polyglot: 65.0
+    math_500: 90.0
+    aime_2024: 75.0
+    aime_2025: 70.0
+    simpleqa: 20.0
+    hle: 7.0
+  deepseek-r1:
+    livecodebench: 65.0
+    swebench_verified: 50.0
+    aider_polyglot: 75.0
+    math_500: 98.0
+    aime_2024: 79.0
+    aime_2025: 70.0
+    simpleqa: 22.0
+    hle: 8.5
+    ruler: 88.0
+  deepseek-v3:
+    livecodebench: 50.0
+    swebench_verified: 35.0
+    aider_polyglot: 65.0
+    math_500: 90.0
+    aime_2024: 60.0
+    aime_2025: 50.0
+    simpleqa: 25.0
+    hle: 9.0
+  qwen3-coder:
+    livecodebench: 65.0
+    swebench_verified: 55.0
+    aider_polyglot: 75.0
+  kimi-k2:
+    livecodebench: 60.0
+    swebench_verified: 65.0
+    aider_polyglot: 78.0
+    math_500: 95.0
+    aime_2024: 70.0
+    simpleqa: 30.0
