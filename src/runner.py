@@ -13,18 +13,26 @@ Examples
 
     # Drive benchmarks through the lm-eval harness instead of the builtin engine:
     python -m src.runner --models deepseek-v3 --benchmarks mmlu,gpqa --engine lm_eval
+
+Multiple providers run IN PARALLEL by default (one thread each), so an OpenAI,
+an Anthropic and a Gemini key are exercised at the same time. Use --jobs 1 for
+strictly sequential runs (cleaner logs). Providers without a key in .env are
+skipped. Each provider speaks its own API dialect (openai / anthropic / gemini)
+via src/provider_clients.make_client.
 """
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from rich.console import Console
 from rich.table import Table
 
-from .config import load_config
-from .ollama_client import OllamaCloudClient
+from .config import load_config, get_provider_credentials, PROVIDERS
+from .provider_clients import make_client
 from .results import save_result, ResultRecord
 from .engines import run_builtin
 
@@ -60,14 +68,11 @@ def resolve_models(cfg, client, models_arg: str, provider_name: str = "ollama") 
         if not live:
             console.print(f"[red]No live models returned for provider '{provider_name}'.[/red]")
             return []
-
-        # Strictly enforce free tier filter for free providers (e.g., OpenRouter)
         if prov == "openrouter":
             free_live = [m for m in live if m.endswith(":free") or m == "openrouter/free"]
             if free_live:
                 live = free_live
                 console.print(f"[green][{provider_name}] Strict Free Tier Filter: {len(live)} free model(s) selected[/green]")
-
         console.print(f"[green][{provider_name}] Discovered {len(live)} live model(s):[/green] {', '.join(live[:8])}{' ...' if len(live)>8 else ''}")
         return sorted(live)
 
@@ -79,11 +84,9 @@ def resolve_benchmarks(cfg, models, benchmarks_arg: str) -> dict[str, list[str]]
     """Return {model_id: [benchmark names]}."""
     all_bench = list(cfg.benchmarks.get("benchmarks", {}).keys())
     profiles = cfg.models.get("profiles", {})
-    default_profile = cfg.models.get("default_profile", "general")
 
     if benchmarks_arg == "all":
         return {m: list(all_bench) for m in models}
-
     if benchmarks_arg in profiles:  # a profile name
         bs = _profile_benchmarks(cfg, [benchmarks_arg])
         return {m: bs for m in models}
@@ -131,21 +134,74 @@ def run_one(cfg, client, model, benchmark, *, quick, engine):
 
 
 # ----------------------------------------------------------------------
+# Per-provider worker (runs in its own thread when parallel)
+# ----------------------------------------------------------------------
+def run_provider(cfg, prov, args) -> list[ResultRecord]:
+    """Run the full model x benchmark plan for ONE provider. Thread-safe:
+    each provider gets its own client and writes its own result files."""
+    from .config import provider_api_type
+
+    finished: list[ResultRecord] = []
+    if not get_provider_credentials(prov)[1]:
+        console.print(f"[yellow]Skipping provider '{prov}': API key not set in .env[/yellow]")
+        return finished
+
+    api_type = provider_api_type(prov)
+    console.rule(f"[bold magenta]Provider: {prov.upper()} [{api_type}][/bold magenta]")
+    try:
+        client = make_client(prov, cfg)
+    except Exception as e:  # noqa: BLE001 -- keep other providers running
+        console.print(f"[red]Could not build client for '{prov}' ({api_type}): {e}[/red]")
+        log.exception("client build failed for %s", prov)
+        return finished
+
+    try:
+        models = resolve_models(cfg, client, args.models, provider_name=prov)
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[red]Failed to resolve models for provider '{prov}': {e}[/red]")
+        log.exception("model discovery failed for %s", prov)
+        return finished
+    if not models:
+        return finished
+
+    plan = benchmark_set_per_model(cfg, models, args.benchmarks)
+    for model in models:
+        for benchmark in plan.get(model, []):
+            try:
+                rec = run_one(cfg, client, model, benchmark,
+                              quick=args.quick, engine=args.engine)
+                save_result(rec)
+                finished.append(rec)
+                tag = f"{rec.metric}={rec.percent}%" if rec.n_items else "no items"
+                console.print(f"  [{prov}] {model} / {benchmark} -> {tag}")
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:  # noqa: BLE001
+                log.exception("%s/%s/%s failed", prov, model, benchmark)
+                console.print(f"  [red][{prov}] {model}/{benchmark} FAILED[/red] "
+                              f"{type(e).__name__}: {e}")
+    return finished
+
+
+# ----------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="ollama-eval", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--provider", default="ollama",
-                    help="provider name (ollama, qwen, groq, openrouter, cerebras, hf, glm, poe, all)")
+                    help="provider name (openai, anthropic, gemini, ollama, qwen, groq, "
+                         "openrouter, cerebras, hf, together, ... or 'all')")
     ap.add_argument("--models", default="auto",
-                    help="comma list, 'auto' (live /v1/models), or 'all'")
+                    help="comma list, 'auto' (live model list), or 'all'")
     ap.add_argument("--benchmarks", default="mmlu,gsm8k",
                     help="comma list, 'all', a profile name (general/coding/reasoning), "
                          "or 'per_profile'")
     ap.add_argument("--engine", default="builtin", choices=["builtin", "lm_eval", "evalplus"])
     ap.add_argument("--quick", action="store_true",
                     help="use small per-benchmark limits for a fast end-to-end check")
+    ap.add_argument("--jobs", type=int, default=0,
+                    help="max providers to run in parallel (0 = all capped at 8; 1 = sequential)")
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
 
@@ -154,54 +210,39 @@ def main(argv=None) -> int:
 
     cfg = load_config()
 
-    from .config import get_provider_credentials, PROVIDERS
-    target_providers = list(PROVIDERS.keys()) if args.provider.lower() == "all" else [p.strip() for p in args.provider.split(",") if p.strip()]
+    target_providers = (list(PROVIDERS.keys()) if args.provider.lower() == "all"
+                        else [p.strip() for p in args.provider.split(",") if p.strip()])
+
+    runnable = [p for p in target_providers if get_provider_credentials(p)[1]]
+    for p in target_providers:
+        if p not in runnable:
+            console.print(f"[yellow]Skipping provider '{p}': API key not set in .env[/yellow]")
+
+    if not runnable:
+        console.print("[red]No providers with an API key configured. Edit .env and retry.[/red]")
+        return 1
 
     finished: list[ResultRecord] = []
-
-    for prov in target_providers:
-        url, key = get_provider_credentials(prov)
-        if not key:
-            console.print(f"[yellow]Skipping provider '{prov}': API key not set in .env[/yellow]")
-            continue
-        console.rule(f"[bold magenta]Provider: {prov.upper()} ({url})[/bold magenta]")
-        client = OllamaCloudClient(
-            url, key, timeout=cfg.sampling.timeout,
-            seed=cfg.sampling.seed, temperature=cfg.sampling.temperature, org_id=cfg.org_id,
-        )
-
-        try:
-            models = resolve_models(cfg, client, args.models, provider_name=prov)
-        except Exception as e:
-            console.print(f"[red]Failed to resolve models for provider '{prov}': {e}[/red]")
-            continue
-
-        plan = benchmark_set_per_model(cfg, models, args.benchmarks)
-        total, done = sum(len(v) for v in plan.values()), 0
-
-        for model in models:
-            for benchmark in plan[model]:
-                done += 1
-                console.print(f"\n[bold][{done}/{total}][/bold] [{prov}] {model}  •  {benchmark}  "
-                              f"({args.engine})")
+    sequential = (args.jobs == 1) or len(runnable) <= 1
+    if sequential:
+        if len(runnable) > 1:
+            console.print("[dim]Running providers sequentially (--jobs 1).[/dim]")
+        for prov in runnable:
+            finished.extend(run_provider(cfg, prov, args))
+    else:
+        jobs = max(1, (args.jobs if args.jobs > 0 else min(len(runnable), 8)))
+        os.environ["OLLAMA_EVAL_QUIET"] = "1"  # tame interleaving tqdm bars across threads
+        console.print(f"[green]Running {len(runnable)} provider(s) in parallel "
+                      f"(jobs={jobs})[/green]")
+        with ThreadPoolExecutor(max_workers=jobs) as ex:
+            futs = {ex.submit(run_provider, cfg, prov, args): prov for prov in runnable}
+            for fut in as_completed(futs):
+                prov = futs[fut]
                 try:
-                    rec = run_one(cfg, client, model, benchmark,
-                                  quick=args.quick, engine=args.engine)
-                    path = save_result(rec)
-                    finished.append(rec)
-                    if rec.n_items:
-                        console.print(f"  -> {rec.metric}={rec.percent}% "
-                                      f"(n={rec.n_items}, errors={len(rec.errors)})  "
-                                      f"[dim]{path.name}[/dim]")
-                    else:
-                        console.print(f"  -> [yellow]no items evaluated[/yellow] "
-                                      f"({rec.errors[-1] if rec.errors else 'unknown'})")
-                except KeyboardInterrupt:
-                    console.print("[red]Interrupted.[/red]")
-                    return 130
-                except Exception as e:  # noqa: BLE001
-                    log.exception("%s/%s failed", model, benchmark)
-                    console.print(f"  -> [red]FAILED[/red] {type(e).__name__}: {e}")
+                    finished.extend(fut.result())
+                except Exception as e:  # noqa: BLE001 -- one provider must not kill the rest
+                    log.exception("provider %s crashed", prov)
+                    console.print(f"[red]Provider {prov} crashed: {e}[/red]")
 
     _print_summary(finished)
     return 0

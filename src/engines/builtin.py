@@ -7,6 +7,7 @@ counted and logged but never abort the run.
 from __future__ import annotations
 
 import logging
+import os
 
 from tqdm import tqdm
 
@@ -100,7 +101,7 @@ def run_builtin(client: OllamaCloudClient, model: str, name: str, spec: dict, *,
     errors: list[str] = []
     samples: list[dict] = []
 
-    for idx, item in enumerate(tqdm(items, desc=f"{model}/{name}", unit="q")):
+    for idx, item in enumerate(tqdm(items, desc=f"{model}/{name}", unit="q", disable=bool(os.environ.get("OLLAMA_EVAL_QUIET")))):
         try:
             if kind == "mcq":
                 if item.get("choices"):

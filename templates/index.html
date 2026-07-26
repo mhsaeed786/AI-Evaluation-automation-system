@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Cloud AI Evaluation Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#30363d;
+  --text:#c9d1d9;--muted:#8b949e;--cyan:#58a6ff;--green:#3fb950;
+  --yellow:#d29922;--red:#f85149;--purple:#bc8cff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding:14px 24px;position:sticky;top:0;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);z-index:10}
+header h1{margin:0;font-size:1.35rem;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.meta{color:var(--muted);font-size:.8rem}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85rem}
+button:hover{border-color:var(--cyan)}
+nav.tabs{display:flex;gap:2px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto}
+nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:11px 14px;color:var(--muted);white-space:nowrap}
+nav.tabs button.active{color:var(--text);border-bottom-color:var(--cyan)}
+main{padding:22px;max-width:1600px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:13px}
+.card .label{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.card .value{font-size:1.45rem;font-weight:700;color:var(--cyan);margin-top:3px}
+.card .value.green{color:var(--green)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+input,select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.84rem}
+input[type=text],input:not([type]){min-width:220px;flex-grow:1}
+.table-wrap{overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;max-height:72vh}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th,td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+th{background:var(--panel2);color:var(--muted);text-align:left;position:sticky;top:0;cursor:pointer;user-select:none}
+th:first-child,td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+tbody tr:hover td{background:rgba(88,166,255,.06)}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-weight:600;font-size:.76rem}
+.s100{background:rgba(63,185,80,.18);color:var(--green);border:1px solid var(--green)}
+.hi{background:rgba(88,166,255,.15);color:var(--cyan);border:1px solid var(--cyan)}
+.mid{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid var(--yellow)}
+.lo{background:rgba(248,81,73,.15);color:var(--red);border:1px solid var(--red)}
+.na{color:var(--muted)}
+.delta-neg{color:var(--red)}.delta-pos{color:var(--green)}.delta-na{color:var(--muted)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.empty code,.note code{background:var(--panel2);padding:2px 6px;border-radius:4px;color:var(--text)}
+.chart-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
+.note{background:rgba(210,153,34,.08);border:1px solid var(--yellow);color:var(--yellow);padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:14px}
+.tag{font-size:.7rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;margin-left:6px}
+.hidden{display:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px;max-width:760px}
+.fld .label{font-size:.68rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.fld input,.fld select{width:100%}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Multi-Cloud AI Evaluation Dashboard</h1>
+    <div class="meta" id="meta">Loading…</div>
+  </div>
+  <div class="row">
+    <span class="meta" id="updated"></span>
+    <button onclick="loadAll()">&#8635; Refresh</button>
+  </div>
+</header>
+<nav class="tabs">
+  <button class="active" onclick="show('overview',this)">Overview</button>
+  <button onclick="show('matrix',this)">Measured matrix</button>
+  <button onclick="show('deltas',this)">Measured vs advertised</button>
+  <button onclick="show('providers',this)">By provider</button>
+  <button onclick="show('runs',this)">Run history</button>
+  <button onclick="show('run',this)">&#9654; Run</button>
+</nav>
+<main>
+  <section id="tab-overview"></section>
+  <section id="tab-matrix" class="hidden"></section>
+  <section id="tab-deltas" class="hidden"></section>
+  <section id="tab-providers" class="hidden"></section>
+  <section id="tab-runs" class="hidden"></section>
+  <section id="tab-run" class="hidden"></section>
+</main>
+<script>
+const S={}; let chart=null;
+const pctClass=v=> v==null?'na': v>=95?'s100': v>=70?'hi': v>=40?'mid':'lo';
+const pctStr =v=> v==null?'\u2014': v.toFixed(1)+'%';
+const $ =id=>document.getElementById(id);
+async function get(p){const r=await fetch(p);return r.json();}
+function emptyNote(){return '<div class="empty">No results yet. Run <code>python -m src.runner --provider ollama --models auto --benchmarks all --quick</code> (or use the <b>&#9654; Run</b> tab) then click Refresh.</div>';}
+
+async function loadAll(){
+  try{
+    const [ov,mx,dl,pv,rn,cfg]=await Promise.all([
+      get('/api/overview'),get('/api/matrix'),get('/api/deltas'),
+      get('/api/providers'),get('/api/runs'),get('/api/config')]);
+    S.overview=ov;S.matrix=mx;S.deltas=dl;S.providers=pv;S.runs=rn;S.config=cfg;
+    $('meta').textContent='Endpoint '+cfg.base_url+'  \u00b7  '+cfg.providers.length+' providers configured';
+    $('updated').textContent='Updated '+new Date().toLocaleTimeString();
+    renderOverview();renderMatrix();renderDeltas();renderProviders();renderRuns();renderRun();
+  }catch(e){$('tab-overview').innerHTML='<div class="empty">Failed to load: '+e+' \u2014 is the server running? (<code>python -m src.server</code>)</div>';}
+}
+function show(id,btn){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
+  $('tab-'+id).classList.remove('hidden');
+  if(id==='overview'&&chart)chart.resize();
+}
+
+/* Overview */
+function renderOverview(){
+  const o=S.overview;
+  if(!o.n_runs){$('tab-overview').innerHTML=emptyNote();return;}
+  let html='<div class="cards">'
+    +card('Models',o.n_models)+card('Benchmarks',o.n_benchmarks)+card('Providers',o.n_providers)
+    +card('Runs',o.n_runs)+card('Avg score',o.avg_score.toFixed(1)+'%')
+    +card('Top model',(o.top_model||'\u2014')+'<span class="tag">'+o.top_score.toFixed(1)+'%</span>',1)
+    +'</div>';
+  const entries=Object.entries(o.model_avg||{}).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  html+='<div class="chart-box"><div class="label" style="margin-bottom:8px;color:var(--muted)">Top models by average score</div><canvas id="ovChart" height="92"></canvas></div>';
+  html+='<div class="chart-box"><div class="label" style="margin-bottom:8px;color:var(--muted)">Providers seen</div><div class="row">'+o.providers.map(p=>'<span class="tag">'+p+'</span>').join(' ')+'</div></div>';
+  $('tab-overview').innerHTML=html;
+  drawChart(entries);
+}
+function card(label,value,green){return '<div class="card"><div class="label">'+label+'</div><div class="value'+(green?' green':'')+'">'+value+'</div></div>';}
+function drawChart(entries){
+  if(typeof Chart==='undefined'||!entries.length)return;
+  if(chart)chart.destroy();
+  chart=new Chart($('ovChart'),{type:'bar',
+    data:{labels:entries.map(e=>e[0]),datasets:[{label:'avg %',data:entries.map(e=>e[1]),backgroundColor:'#58a6ff'}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,grid:{color:'#21262d'},ticks:{color:'#8b949e'}},y:{grid:{display:false},ticks:{color:'#8b949e'}}}}});
+}
+
+/* Matrix */
+function renderMatrix(){
+  const m=S.matrix;
+  if(!m.models.length){$('tab-matrix').innerHTML=emptyNote();return;}
+  $('tab-matrix').innerHTML='<div class="toolbar"><input id="mtxSearch" type="text" placeholder="Filter models\u2026" oninput="renderMatrixTable()"></div><div class="table-wrap"><table id="mtxTable"></table></div>';
+  renderMatrixTable();
+}
+function renderMatrixTable(){
+  const m=S.matrix;const q=(($('mtxSearch')||{}).value||'').toLowerCase();
+  const models=m.models.filter(x=>x.toLowerCase().includes(q));
+  let h='<thead><tr><th>Model</th>'+m.benchmarks.map(b=>'<th>'+b+'</th>').join('')+'</tr></thead><tbody>';
+  for(const mdl of models){
+    h+='<tr><td><strong>'+mdl+'</strong></td>';
+    for(const b of m.benchmarks){
+      const v=(m.cells[mdl]||{})[b];const meta=m.meta[mdl+'::'+b]||{};
+      h+='<td title="'+(meta.engine||'')+' \u00b7 '+(meta.provider||'')+' \u00b7 n='+(meta.n||0)+'"><span class="pill '+pctClass(v)+'">'+pctStr(v)+'</span></td>';
+    }
+    h+='</tr>';
+  }
+  $('mtxTable').innerHTML=h+'</tbody>';
+}
+
+/* Deltas */
+let deltaOnlyAdv=true, deltaSort={k:'delta',dir:1};
+function renderDeltas(){
+  const d=S.deltas;
+  if(!d.rows.length){$('tab-deltas').innerHTML=emptyNote();return;}
+  $('tab-deltas').innerHTML='<div class="toolbar"><label><input type="checkbox" id="onlyAdv" '+(deltaOnlyAdv?'checked':'')+' onchange="deltaOnlyAdv=this.checked;renderDeltasTable()"> Only benchmarks with an advertised reference</label></div><div class="table-wrap"><table id="dlTable"></table></div>';
+  renderDeltasTable();
+}
+function renderDeltasTable(){
+  let rows=S.deltas.rows.slice();
+  if(deltaOnlyAdv)rows=rows.filter(r=>r.advertised!=null);
+  const k=deltaSort.k,dir=deltaSort.dir;
+  rows.sort((a,b)=>{const av=a[k],bv=b[k];if(av==null&&bv==null)return 0;if(av==null)return 1;if(bv==null)return -1;return (av<bv?-1:av>bv?1:0)*dir;});
+  const th=(kk,lb)=>'<th onclick="deltaSort={k:\''+kk+'\',dir:(deltaSort.k==\''+kk+'\'?-deltaSort.dir:1)};renderDeltasTable()">'+lb+(deltaSort.k===kk?(deltaSort.dir>0?' \u25B2':' \u25BC':'')+'</th>';
+  let h='<thead><tr>'+th('model','Model')+th('provider','Provider')+th('benchmark','Benchmark')+th('measured','Measured')+th('advertised','Advertised')+th('delta','\u0394')+'</tr></thead><tbody>';
+  for(const r of rows){
+    const dc=r.delta==null?'delta-na':(r.delta<0?'delta-neg':'delta-pos');
+    h+='<tr><td><strong>'+r.model+'</strong></td><td>'+r.provider+'</td><td>'+r.benchmark+'</td>'
+      +'<td><span class="pill '+pctClass(r.measured)+'">'+pctStr(r.measured)+'</span></td>'
+      +'<td>'+(r.advertised==null?'<span class="na">n/a</span>':r.advertised.toFixed(1)+'%')+'</td>'
+      +'<td class="'+dc+'"><strong>'+(r.delta==null?'\u2014':(r.delta>=0?'+':'')+r.delta.toFixed(1))+'</strong><span class="tag">n='+r.n+'</span></td></tr>';
+  }
+  $('dlTable').innerHTML=h+'</tbody>';
+}
+
+/* Providers (dial-down comparison) */
+function renderProviders(){
+  const p=S.providers;
+  if(!p.models.length){$('tab-providers').innerHTML=emptyNote();return;}
+  let html='<div class="note">Compare one <strong>model</strong> across every provider serving it \u2014 a big spread hints at quantization or a silently-swapped backend.</div>';
+  html+='<div class="toolbar"><span class="label" style="color:var(--muted)">Model:</span> <select id="provModel" onchange="renderProvCompare()">'+p.models.map(m=>'<option>'+m+'</option>').join('')+'</select></div>';
+  html+='<div class="table-wrap" id="provCompare"></div>';
+  $('tab-providers').innerHTML=html;
+  renderProvCompare();
+}
+function renderProvCompare(){
+  const p=S.providers;const mdl=($('provModel')||{}).value||p.models[0];
+  const provs=p.providers.filter(pr=>p.cells[pr]&&p.cells[pr][mdl]);
+  let h;
+  if(!provs.length){h='<div class="empty">No provider has run <code>'+mdl+'</code> yet.</div>';}
+  else{
+    h='<table><thead><tr><th>Benchmark</th>'+provs.map(pr=>'<th>'+pr+'</th>').join('')+'</tr></thead><tbody>';
+    for(const b of p.benchmarks){
+      const vals=provs.map(pr=>((p.cells[pr]||{})[mdl]||{})[b]);
+      if(vals.every(v=>v==null))continue;
+      h+='<tr><td><strong>'+b+'</strong></td>'+vals.map(v=>'<td><span class="pill '+pctClass(v)+'">'+pctStr(v)+'</span></td>').join('')+'</tr>';
+    }
+    h+='</tbody></table>';
+  }
+  $('provCompare').innerHTML=h;
+}
+
+/* Runs */
+function renderRuns(){
+  const r=S.runs;
+  if(!r.runs.length){$('tab-runs').innerHTML=emptyNote();return;}
+  let h='<div class="table-wrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Model</th><th>Benchmark</th><th>Engine</th><th>Score</th><th>n</th></tr></thead><tbody>';
+  for(const x of r.runs){
+    h+='<tr><td>'+(x.timestamp||'')+'</td><td>'+x.provider+'</td><td>'+x.model+'</td><td>'+x.benchmark+'</td><td>'+x.engine+'</td>'
+      +'<td><span class="pill '+pctClass(x.score)+'">'+pctStr(x.score)+'</span></td><td>'+x.n+'</td></tr>';
+  }
+  $('tab-runs').innerHTML=h+'</tbody></table></div>';
+}
+
+/* Run trigger */
+function renderRun(){
+  const c=S.config;
+  let h='<div class="note">The run trigger executes model-generated code locally and spends API quota. It is disabled unless the server was started with <code>OLLAMA_EVAL_ENABLE_RUN=1</code>. Arguments are validated and never passed through a shell.</div>';
+  h+='<div class="col">';
+  h+='<div class="fld"><div class="label">Provider</div><select id="rProv">'+c.providers.map(p=>'<option>'+p+'</option>').join('')+'</select></div>';
+  h+='<div class="fld"><div class="label">Models (comma list or <code>auto</code>)</div><input id="rModels" value="auto"></div>';
+  h+='<div class="fld"><div class="label">Benchmarks (comma list / profile / <code>all</code>)</div><input id="rBench" value="mmlu,gsm8k"></div>';
+  h+='<div class="fld"><div class="label">Engine</div><select id="rEng"><option>builtin</option><option>lm_eval</option><option>evalplus</option></select></div>';
+  h+='<label><input type="checkbox" id="rQuick" checked> quick (small samples)</label>';
+  h+='<div class="row"><button onclick="startRun()">&#9654; Start run</button><span class="meta" id="runStatus"></span></div>';
+  h+='</div>';
+  $('tab-run').innerHTML=h;
+}
+async function startRun(){
+  const body={provider:$('rProv').value,models:$('rModels').value,benchmarks:$('rBench').value,engine:$('rEng').value,quick:$('rQuick').checked};
+  $('runStatus').textContent='starting\u2026';
+  try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    $('runStatus').textContent=j.ok?j.message:('error: '+(j.error||r.status));
+    if(j.ok)setTimeout(loadAll,15000);
+  }catch(e){$('runStatus').textContent='failed: '+e;}
+}
+
+loadAll();
+</script>
+</body>
+</html>

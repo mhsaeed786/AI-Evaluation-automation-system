@@ -132,23 +132,44 @@ def load_config(env_path: Path | None = None, *, require_key: bool = True) -> Co
     return cfg
 
 
+# Provider registry: name -> (api_type, url_env, key_env, default_url).
+# api_type selects the chat-client dialect in src/provider_clients.py:
+#   "openai"    -> OpenAI-compatible (OpenAI/Ollama/Groq/OpenRouter/...; also
+#                  Google Gemini via its /v1beta/openai compat URL).
+#   "anthropic" -> Anthropic Messages API (anthropic SDK, optional).
+#   "gemini"    -> Google Gemini native API (google-genai SDK, optional).
 PROVIDERS = {
-    "ollama": ("OLLAMA_BASE_URL", "OLLAMA_API_KEY", "https://ollama.com/v1"),
-    "qwen": ("QWEN_BASE_URL", "QWEN_API_KEY", "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
-    "groq": ("GROQ_BASE_URL", "GROQ_API_KEY", "https://api.groq.com/openai/v1"),
-    "openrouter": ("OPENROUTER_BASE_URL", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
-    "cerebras": ("CEREBRAS_BASE_URL", "CEREBRAS_API_KEY", "https://api.cerebras.ai/v1"),
-    "hf": ("HF_BASE_URL", "HF_TOKEN", "https://router.huggingface.co/v1"),
-    "glm": ("GLM_BASE_URL", "GLM_API_KEY", "https://open.bigmodel.cn/api/paas/v4"),
-    "poe": ("POE_BASE_URL", "POE_API_KEY", "https://api.poe.com/v1"),
+    "openai":     ("openai",    "OPENAI_BASE_URL",     "OPENAI_API_KEY",     "https://api.openai.com/v1"),
+    "ollama":     ("openai",    "OLLAMA_BASE_URL",     "OLLAMA_API_KEY",     "https://api.ollama.com/v1"),
+    "qwen":       ("openai",    "QWEN_BASE_URL",       "QWEN_API_KEY",       "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
+    "groq":       ("openai",    "GROQ_BASE_URL",       "GROQ_API_KEY",       "https://api.groq.com/openai/v1"),
+    "openrouter": ("openai",    "OPENROUTER_BASE_URL", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
+    "cerebras":   ("openai",    "CEREBRAS_BASE_URL",   "CEREBRAS_API_KEY",   "https://api.cerebras.ai/v1"),
+    "hf":         ("openai",    "HF_BASE_URL",         "HF_TOKEN",           "https://router.huggingface.co/v1"),
+    "together":   ("openai",    "TOGETHER_BASE_URL",   "TOGETHER_API_KEY",   "https://api.together.xyz/v1"),
+    "mistral":    ("openai",    "MISTRAL_BASE_URL",    "MISTRAL_API_KEY",    "https://api.mistral.ai/v1"),
+    "deepinfra":  ("openai",    "DEEPINFRA_BASE_URL",  "DEEPINFRA_API_KEY",  "https://api.deepinfra.com/v1"),
+    "fireworks":  ("openai",    "FIREWORKS_BASE_URL",  "FIREWORKS_API_KEY",  "https://api.fireworks.ai/inference/v1"),
+    "novita":     ("openai",    "NOVITA_BASE_URL",     "NOVITA_API_KEY",     "https://api.novita.ai/v3/openai"),
+    "perplexity": ("openai",    "PERPLEXITY_BASE_URL", "PERPLEXITY_API_KEY", "https://api.perplexity.ai"),
+    "cohere":     ("openai",    "COHERE_BASE_URL",     "COHERE_API_KEY",     "https://api.cohere.ai/compatibility/v1"),
+    "glm":        ("openai",    "GLM_BASE_URL",        "GLM_API_KEY",        "https://open.bigmodel.cn/api/paas/v4"),
+    "poe":        ("openai",    "POE_BASE_URL",        "POE_API_KEY",        "https://api.poe.com/v1"),
+    "gemini":     ("gemini",    "GEMINI_BASE_URL",     "GEMINI_API_KEY",     "https://generativelanguage.googleapis.com/v1beta"),
+    "anthropic":  ("anthropic", "ANTHROPIC_BASE_URL",  "ANTHROPIC_API_KEY",  "https://api.anthropic.com"),
 }
+
+
+def provider_api_type(provider_name: str) -> str:
+    name = provider_name.lower().strip()
+    return PROVIDERS[name][0] if name in PROVIDERS else "openai"
 
 
 def get_provider_credentials(provider_name: str) -> tuple[str, str]:
     name = provider_name.lower().strip()
     if name not in PROVIDERS:
         name = "ollama"
-    url_var, key_var, default_url = PROVIDERS[name]
+    _api_type, url_var, key_var, default_url = PROVIDERS[name]
     url = os.environ.get(url_var, default_url).strip().rstrip("/")
     key = os.environ.get(key_var, "").strip()
     if not key and name == "ollama":

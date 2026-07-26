@@ -28,6 +28,10 @@ pandas>=2.2.3
 tabulate>=0.9.0
 Jinja2>=3.1.4
 
+# --- Web UI (local dashboard) ---------------------------------------
+# Lightweight, pure-Python; serves the dashboard at http://127.0.0.1:5000.
+flask>=3.0.0
+
 # --- Benchmark datasets (Hugging Face datasets hub) ------------------
 # Pure-Python data loader; works on Python 3.11–3.14.
 datasets>=3.1.0
