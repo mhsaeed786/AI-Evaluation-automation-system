@@ -6,6 +6,7 @@ import { Dashboard } from './components/Dashboard';
 import { LLMGateway } from './components/LLMGateway';
 import { AgentRunner } from './components/AgentRunner';
 import { SpecialistEvolution } from './components/SpecialistEvolution';
+import { AgentArchitecture } from './components/AgentArchitecture';
 import { OpenSourceSuite } from './components/OpenSourceSuite';
 import { IntegrationsHub } from './components/IntegrationsHub';
 import { PortableTargets } from './components/PortableTargets';
@@ -344,6 +345,8 @@ export default function App() {
           )}
 
           {activeTab === 'specialist_evolution' && <SpecialistEvolution />}
+
+          {activeTab === 'agent_architecture' && <AgentArchitecture />}
 
           {activeTab === 'opensource_suite' && <OpenSourceSuite />}
 

@@ -34,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
     { id: 'llm_gateway', label: 'LLM Router & Budget', icon: Cpu },
     { id: 'agent_runner', label: 'Agent Loop Runner', icon: Terminal },
     { id: 'specialist_evolution', label: 'Specialist Evolution (RAG)', icon: Brain, badge: 'SQLite' },
+    { id: 'agent_architecture', label: 'Agent Architecture', icon: Layers, badge: '12 Features' },
     { id: 'opensource_suite', label: 'Open Source AI Suite', icon: Sparkles, badge: '12 Tools' },
     { id: 'integrations_hub', label: 'Multi-Account Integrations', icon: Globe, badge: '11 Active' },
     { id: 'portable_targets', label: 'Portable Desktop & APK', icon: Smartphone, badge: 'Tauri' },
