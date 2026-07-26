@@ -1,19 +1,18 @@
-"""Local web UI for the evaluation system.
+"""Local web UI for the evaluation system — full application.
 
     python -m src.server                 # http://127.0.0.1:5000
     python -m src.server --port 8080
     $env:DASHBOARD_PORT=8080; python -m src.server
 
-Reads results/ + config/ (no API key needed) and serves an interactive
-dashboard. Bound to 127.0.0.1 by default so it is reachable only from your
-machine.
+A proper management application with:
+  - Overview / Matrix / Deltas / Provider comparison / Run history tabs
+  - Settings page (configure providers, select benchmarks, sampling)
+  - Report download (CSV / JSON / Markdown)
+  - Industry benchmark reference data
+  - Model-vs-model comparison
+  - Run trigger (opt-in via OLLAMA_EVAL_ENABLE_RUN=1)
 
-Dependencies: pip install flask   (listed in requirements.txt)
-
-Optional run trigger: POST /api/run is disabled unless OLLAMA_EVAL_ENABLE_RUN=1.
-Running benchmarks executes model-generated code locally and spends API quota;
-enable only on a box you control. Arguments are validated against the config
-allowlists and passed as a list (never a shell string), so it is not injectable.
+Uses threaded=True so concurrent API calls don't block each other.
 """
 from __future__ import annotations
 
@@ -27,12 +26,11 @@ from .config import PROJECT_ROOT, PROVIDERS, load_config
 from . import dashboard as D
 
 try:
-    from flask import Flask, jsonify, request
+    from flask import Flask, jsonify, request, Response
 except ImportError as e:  # pragma: no cover
     raise SystemExit(
         "The web UI needs Flask. Install it with:\n"
         "    pip install flask\n"
-        "(it is listed in requirements.txt)."
     ) from e
 
 INDEX = PROJECT_ROOT / "templates" / "index.html"
@@ -40,15 +38,17 @@ INDEX = PROJECT_ROOT / "templates" / "index.html"
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.config["JSON_SORT_KEYS"] = False
 
     def _cfg():
         return load_config(require_key=False)
 
+    # --- Page ---
     @app.route("/")
     def index():
-        # Serve raw HTML (no Jinja) so the embedded JS is left untouched.
         return INDEX.read_text(encoding="utf-8")
 
+    # --- Data APIs ---
     @app.route("/api/overview")
     def api_overview():
         return jsonify(D.overview(_cfg()))
@@ -80,6 +80,47 @@ def create_app() -> Flask:
             "base_url": cfg.base_url,
         })
 
+    # --- Settings ---
+    @app.route("/api/settings", methods=["GET"])
+    def api_settings_get():
+        return jsonify(D.settings_view(_cfg()))
+
+    @app.route("/api/settings", methods=["POST"])
+    def api_settings_save():
+        body = request.get_json(silent=True) or {}
+        return jsonify(D.save_settings(_cfg(), body))
+
+    # --- Industry reference ---
+    @app.route("/api/industry")
+    def api_industry():
+        return jsonify(D.industry_reference(_cfg()))
+
+    @app.route("/api/compare")
+    def api_compare():
+        a = request.args.get("a", "")
+        b = request.args.get("b", "")
+        if not a or not b:
+            return jsonify({"error": "provide ?a=model1&b=model2"}), 400
+        return jsonify(D.model_comparison(_cfg(), a, b))
+
+    # --- Report export ---
+    @app.route("/api/export/csv")
+    def export_csv():
+        csv_str = D.export_csv(_cfg())
+        return Response(csv_str, mimetype="text/csv",
+                        headers={"Content-Disposition": "attachment; filename=eval_results.csv"})
+
+    @app.route("/api/export/json")
+    def export_json():
+        return Response(D.export_json(_cfg()), mimetype="application/json",
+                        headers={"Content-Disposition": "attachment; filename=eval_results.json"})
+
+    @app.route("/api/export/markdown")
+    def export_markdown():
+        return Response(D.export_markdown(_cfg()), mimetype="text/markdown",
+                        headers={"Content-Disposition": "attachment; filename=eval_report.md"})
+
+    # --- Run trigger ---
     @app.route("/api/run", methods=["POST"])
     def api_run():
         if os.environ.get("OLLAMA_EVAL_ENABLE_RUN") != "1":
@@ -87,8 +128,8 @@ def create_app() -> Flask:
                             "error": "run trigger disabled (set OLLAMA_EVAL_ENABLE_RUN=1)"}), 403
         cfg = _cfg()
         body = request.get_json(silent=True) or {}
-        provider = str(body.get("provider", "ollama")).lower()
-        if provider not in PROVIDERS:
+        provider = str(body.get("provider", "all")).lower()
+        if provider != "all" and provider not in PROVIDERS:
             provider = "ollama"
         engine = str(body.get("engine", "builtin"))
         if engine not in ("builtin", "lm_eval", "evalplus"):
@@ -122,7 +163,7 @@ def main() -> int:
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args()
     print(f"Dashboard: http://{args.host}:{args.port}   (Ctrl-C to stop)")
-    create_app().run(host=args.host, port=args.port, debug=args.debug)
+    create_app().run(host=args.host, port=args.port, debug=args.debug, threaded=True)
     return 0
 
 

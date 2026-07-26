@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi-Cloud AI Evaluation Dashboard</title>
+<title>AI Evaluation Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{
-  --bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#30363d;
-  --text:#c9d1d9;--muted:#8b949e;--cyan:#58a6ff;--green:#3fb950;
-  --yellow:#d29922;--red:#f85149;--purple:#bc8cff;
-}
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--cyan:#58a6ff;--green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff}
 *{box-sizing:border-box}
 body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
 header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding:14px 24px;position:sticky;top:0;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);z-index:10}
 header h1{margin:0;font-size:1.35rem;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .meta{color:var(--muted);font-size:.8rem}
-button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85rem}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85rem;transition:border-color .15s}
 button:hover{border-color:var(--cyan)}
-nav.tabs{display:flex;gap:2px;padding:0 18px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto}
-nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:11px 14px;color:var(--muted);white-space:nowrap}
+button.primary{background:var(--cyan);color:#000;border:none;font-weight:600}
+button.primary:hover{opacity:.85}
+button.danger{border-color:var(--red);color:var(--red)}
+nav.tabs{display:flex;gap:0;padding:0 18px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto}
+nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:11px 14px;color:var(--muted);white-space:nowrap;font-size:.88rem}
 nav.tabs button.active{color:var(--text);border-bottom-color:var(--cyan)}
+nav.tabs button:hover{color:var(--text)}
 main{padding:22px;max-width:1600px;margin:0 auto}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:13px}
@@ -29,8 +29,9 @@ main{padding:22px;max-width:1600px;margin:0 auto}
 .card .value.green{color:var(--green)}
 .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
 input,select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.84rem}
-input[type=text],input:not([type]){min-width:220px;flex-grow:1}
-.table-wrap{overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;max-height:72vh}
+input[type=text]{min-width:220px;flex-grow:1}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--cyan)}
+.table-wrap{overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;max-height:68vh}
 table{width:100%;border-collapse:collapse;font-size:.8rem}
 th,td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
 th{background:var(--panel2);color:var(--muted);text-align:left;position:sticky;top:0;cursor:pointer;user-select:none}
@@ -50,16 +51,31 @@ tbody tr:hover td{background:rgba(88,166,255,.06)}
 .tag{font-size:.7rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;margin-left:6px}
 .hidden{display:none}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;gap:10px;max-width:760px}
-.fld .label{font-size:.68rem;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.fld input,.fld select{width:100%}
+.col{display:flex;flex-direction:column;gap:10px}
+.section-title{font-size:1.1rem;font-weight:600;margin:0 0 10px;color:var(--text)}
+.subsection{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
+.provider-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.provider-row:last-child{border-bottom:none}
+.provider-row .pname{font-weight:600;min-width:130px}
+.provider-row .ptype{font-size:.72rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
+.provider-row .pkey{font-size:.72rem;color:var(--green)}
+.provider-row .pnokey{font-size:.72rem;color:var(--red)}
+.bench-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.bench-chip{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;font-size:.8rem;cursor:pointer}
+.bench-chip:hover{border-color:var(--cyan)}
+.bench-chip.disabled{opacity:.4}
+.bench-chip .bkind{font-size:.66rem;color:var(--muted)}
+.compare-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.dl-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.dl-buttons button{display:flex;align-items:center;gap:6px}
+.industry-table th{cursor:default}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Multi-Cloud AI Evaluation Dashboard</h1>
-    <div class="meta" id="meta">Loading…</div>
+    <h1>AI Evaluation Dashboard</h1>
+    <div class="meta" id="meta">Loading...</div>
   </div>
   <div class="row">
     <span class="meta" id="updated"></span>
@@ -68,10 +84,12 @@ tbody tr:hover td{background:rgba(88,166,255,.06)}
 </header>
 <nav class="tabs">
   <button class="active" onclick="show('overview',this)">Overview</button>
-  <button onclick="show('matrix',this)">Measured matrix</button>
-  <button onclick="show('deltas',this)">Measured vs advertised</button>
-  <button onclick="show('providers',this)">By provider</button>
-  <button onclick="show('runs',this)">Run history</button>
+  <button onclick="show('matrix',this)">Measured Matrix</button>
+  <button onclick="show('deltas',this)">Measured vs Advertised</button>
+  <button onclick="show('providers',this)">By Provider</button>
+  <button onclick="show('compare',this)">Model Compare</button>
+  <button onclick="show('settings',this)">Settings</button>
+  <button onclick="show('reports',this)">Reports</button>
   <button onclick="show('run',this)">&#9654; Run</button>
 </nav>
 <main>
@@ -79,20 +97,22 @@ tbody tr:hover td{background:rgba(88,166,255,.06)}
   <section id="tab-matrix" class="hidden"></section>
   <section id="tab-deltas" class="hidden"></section>
   <section id="tab-providers" class="hidden"></section>
-  <section id="tab-runs" class="hidden"></section>
+  <section id="tab-compare" class="hidden"></section>
+  <section id="tab-settings" class="hidden"></section>
+  <section id="tab-reports" class="hidden"></section>
   <section id="tab-run" class="hidden"></section>
 </main>
 <script>
-const S={}; let chart=null;
-const pctClass=v=> v==null?'na': v>=95?'s100': v>=70?'hi': v>=40?'mid':'lo';
-const pctStr =v=> v==null?'\u2014': v.toFixed(1)+'%';
-const $ =id=>document.getElementById(id);
-async function get(p){const r=await fetch(p);return r.json();}
-function emptyNote(){return '<div class="empty">No results yet. Run <code>python -m src.runner --provider ollama --models auto --benchmarks all --quick</code> (or use the <b>&#9654; Run</b> tab) then click Refresh.</div>';}
+const S={};let chart=null;
+const pctClass=v=>v==null?'na':v>=95?'s100':v>=70?'hi':v>=40?'mid':'lo';
+const pctStr=v=>v==null?'\u2014':v.toFixed(1)+'%';
+const $=id=>document.getElementById(id);
+async function get(p){const r=await fetch(p);if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json();}
+function emptyNote(){return '<div class="empty">No results yet. Run <code>python -m src.runner --provider all --benchmarks all --quick</code> (or use the <b>&#9654; Run</b> tab) then click Refresh.</div>';}
 
 async function loadAll(){
   try{
-    const [ov,mx,dl,pv,rn,cfg]=await Promise.all([
+    const[ov,mx,dl,pv,rn,cfg]=await Promise.all([
       get('/api/overview'),get('/api/matrix'),get('/api/deltas'),
       get('/api/providers'),get('/api/runs'),get('/api/config')]);
     S.overview=ov;S.matrix=mx;S.deltas=dl;S.providers=pv;S.runs=rn;S.config=cfg;
@@ -103,13 +123,16 @@ async function loadAll(){
 }
 function show(id,btn){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn)btn.classList.add('active');
   document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
   $('tab-'+id).classList.remove('hidden');
   if(id==='overview'&&chart)chart.resize();
+  if(id==='settings')loadSettings();
+  if(id==='reports')loadReports();
+  if(id==='compare')renderCompareTab();
 }
 
-/* Overview */
+/* ===== Overview ===== */
 function renderOverview(){
   const o=S.overview;
   if(!o.n_runs){$('tab-overview').innerHTML=emptyNote();return;}
@@ -118,8 +141,8 @@ function renderOverview(){
     +card('Runs',o.n_runs)+card('Avg score',o.avg_score.toFixed(1)+'%')
     +card('Top model',(o.top_model||'\u2014')+'<span class="tag">'+o.top_score.toFixed(1)+'%</span>',1)
     +'</div>';
-  const entries=Object.entries(o.model_avg||{}).sort((a,b)=>b[1]-a[1]).slice(0,15);
-  html+='<div class="chart-box"><div class="label" style="margin-bottom:8px;color:var(--muted)">Top models by average score</div><canvas id="ovChart" height="92"></canvas></div>';
+  const entries=Object.entries(o.model_avg||{}).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  html+='<div class="chart-box"><div class="label" style="margin-bottom:8px;color:var(--muted)">Top models by average score</div><canvas id="ovChart" height="100"></canvas></div>';
   html+='<div class="chart-box"><div class="label" style="margin-bottom:8px;color:var(--muted)">Providers seen</div><div class="row">'+o.providers.map(p=>'<span class="tag">'+p+'</span>').join(' ')+'</div></div>';
   $('tab-overview').innerHTML=html;
   drawChart(entries);
@@ -133,11 +156,11 @@ function drawChart(entries){
     options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{max:100,grid:{color:'#21262d'},ticks:{color:'#8b949e'}},y:{grid:{display:false},ticks:{color:'#8b949e'}}}}});
 }
 
-/* Matrix */
+/* ===== Matrix ===== */
 function renderMatrix(){
   const m=S.matrix;
   if(!m.models.length){$('tab-matrix').innerHTML=emptyNote();return;}
-  $('tab-matrix').innerHTML='<div class="toolbar"><input id="mtxSearch" type="text" placeholder="Filter models\u2026" oninput="renderMatrixTable()"></div><div class="table-wrap"><table id="mtxTable"></table></div>';
+  $('tab-matrix').innerHTML='<div class="toolbar"><input id="mtxSearch" type="text" placeholder="Filter models..." oninput="renderMatrixTable()"></div><div class="table-wrap"><table id="mtxTable"></table></div>';
   renderMatrixTable();
 }
 function renderMatrixTable(){
@@ -155,8 +178,8 @@ function renderMatrixTable(){
   $('mtxTable').innerHTML=h+'</tbody>';
 }
 
-/* Deltas */
-let deltaOnlyAdv=true, deltaSort={k:'delta',dir:1};
+/* ===== Deltas ===== */
+let deltaOnlyAdv=true,deltaSort={k:'delta',dir:1};
 function renderDeltas(){
   const d=S.deltas;
   if(!d.rows.length){$('tab-deltas').innerHTML=emptyNote();return;}
@@ -180,7 +203,7 @@ function renderDeltasTable(){
   $('dlTable').innerHTML=h+'</tbody>';
 }
 
-/* Providers (dial-down comparison) */
+/* ===== By Provider ===== */
 function renderProviders(){
   const p=S.providers;
   if(!p.models.length){$('tab-providers').innerHTML=emptyNote();return;}
@@ -207,10 +230,40 @@ function renderProvCompare(){
   $('provCompare').innerHTML=h;
 }
 
-/* Runs */
+/* ===== Model Compare ===== */
+function renderCompareTab(){
+  let html='<div class="note">Compare two models side-by-side across all benchmarks they share.</div>';
+  html+='<div class="compare-bar"><span>Model A:</span><select id="cmpA"></select> <span>Model B:</span><select id="cmpB"></select> <button class="primary" onclick="runCompare()">Compare</button></div>';
+  html+='<div id="cmpResult"></div>';
+  $('tab-compare').innerHTML=html;
+  const models=S.matrix.models||[];
+  $('cmpA').innerHTML=models.map(m=>'<option>'+m+'</option>').join('');
+  $('cmpB').innerHTML=models.map(m=>'<option>'+m+'</option>').join('');
+  if(models.length>1)$('cmpB').selectedIndex=1;
+}
+async function runCompare(){
+  const a=$('cmpA').value,b=$('cmpB').value;
+  if(a===b){$('cmpResult').innerHTML='<div class="empty">Select two different models.</div>';return;}
+  $('cmpResult').innerHTML='<div class="empty">Loading...</div>';
+  try{
+    const d=await get('/api/compare?a='+encodeURIComponent(a)+'&b='+encodeURIComponent(b));
+    if(!d.rows.length){$('cmpResult').innerHTML='<div class="empty">No shared benchmarks between these models.</div>';return;}
+    let h='<div class="table-wrap"><table><thead><tr><th>Benchmark</th><th>'+a+' (measured)</th><th>'+a+' (advertised)</th><th>'+b+' (measured)</th><th>'+b+' (advertised)</th></tr></thead><tbody>';
+    for(const r of d.rows){
+      h+='<tr><td><strong>'+r.benchmark+'</strong></td>'
+        +'<td><span class="pill '+pctClass(r.a_measured)+'">'+pctStr(r.a_measured)+'</span></td>'
+        +'<td>'+(r.a_advertised==null?'<span class="na">n/a</span>':r.a_advertised.toFixed(1)+'%')+'</td>'
+        +'<td><span class="pill '+pctClass(r.b_measured)+'">'+pctStr(r.b_measured)+'</span></td>'
+        +'<td>'+(r.b_advertised==null?'<span class="na">n/a</span>':r.b_advertised.toFixed(1)+'%')+'</td></tr>';
+    }
+    $('cmpResult').innerHTML=h+'</tbody></table></div>';
+  }catch(e){$('cmpResult').innerHTML='<div class="empty">Error: '+e+'</div>';}
+}
+
+/* ===== Run History ===== */
 function renderRuns(){
   const r=S.runs;
-  if(!r.runs.length){$('tab-runs').innerHTML=emptyNote();return;}
+  if(!r.runs.length){$('tab-runs').innerHTML='';return;}
   let h='<div class="table-wrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Model</th><th>Benchmark</th><th>Engine</th><th>Score</th><th>n</th></tr></thead><tbody>';
   for(const x of r.runs){
     h+='<tr><td>'+(x.timestamp||'')+'</td><td>'+x.provider+'</td><td>'+x.model+'</td><td>'+x.benchmark+'</td><td>'+x.engine+'</td>'
@@ -219,23 +272,116 @@ function renderRuns(){
   $('tab-runs').innerHTML=h+'</tbody></table></div>';
 }
 
-/* Run trigger */
+/* ===== Settings ===== */
+let settingsData=null;
+async function loadSettings(){
+  if(settingsData){renderSettings();return;}
+  try{
+    settingsData=await get('/api/settings');
+    renderSettings();
+  }catch(e){$('tab-settings').innerHTML='<div class="empty">Failed to load settings: '+e+'</div>';}
+}
+function renderSettings(){
+  const s=settingsData;
+  let html='';
+  // Providers
+  html+='<div class="subsection"><div class="section-title">Providers</div>';
+  html+='<div class="note">Paid tiers (ollama, qwen, glm) use all models. Free tiers use curated free/text models only. Edit model lists below (comma-separated, or <code>auto</code> for paid).</div>';
+  for(const p of s.providers){
+    const models=Array.isArray(p.models)?p.models.join(', '):(p.models||'auto');
+    html+='<div class="provider-row"><span class="pname">'+p.name+'</span><span class="ptype">'+p.api_type+'</span>'+(p.has_key?'<span class="pkey">key set</span>':'<span class="pnokey">no key</span>')+'<input type="text" id="pm_'+p.name+'" value="'+models+'" style="flex-grow:1;font-size:.78rem"></div>';
+  }
+  html+='</div>';
+  // Benchmarks
+  html+='<div class="subsection"><div class="section-title">Benchmarks</div>';
+  html+='<div class="note">Uncheck benchmarks to skip them. Disabled benchmarks are saved to benchmarks.yaml.</div>';
+  html+='<div class="bench-grid">';
+  for(const b of s.benchmarks){
+    html+='<div class="bench-chip'+(b.enabled?'':' disabled')+'" onclick="this.classList.toggle(\'disabled\')"><input type="checkbox" id="bench_'+b.name+'" '+(b.enabled?'checked':'')+'><span>'+b.name+'</span><span class="bkind">'+b.kind+'</span></div>';
+  }
+  html+='</div></div>';
+  // Sampling
+  html+='<div class="subsection"><div class="section-title">Sampling Defaults</div>';
+  html+='<div class="row"><label>Seed: <input type="number" id="s_seed" value="'+s.sampling.seed+'" style="width:80px"></label><label>Temperature: <input type="number" id="s_temp" value="'+s.sampling.temperature+'" step="0.1" style="width:80px"></label><label>Timeout: <input type="number" id="s_timeout" value="'+s.sampling.timeout+'" style="width:80px">s</label></div>';
+  html+='</div>';
+  // Save
+  html+='<button class="primary" onclick="saveSettings()">Save Settings</button> <span class="meta" id="saveStatus"></span>';
+  $('tab-settings').innerHTML=html;
+}
+async function saveSettings(){
+  const s=settingsData;
+  const pm={};
+  for(const p of s.providers){const v=$('pm_'+p.name).value.trim();pm[p.name]=v==='auto'?'auto':v.split(',').map(x=>x.trim()).filter(Boolean);}
+  const disabled=[];
+  for(const b of s.benchmarks){if(!$('bench_'+b.name).checked)disabled.push(b.name);}
+  const sampling={seed:parseInt($('s_seed').value)||1234,temperature:parseFloat($('s_temp').value)||0.0,timeout:parseInt($('s_timeout').value)||120};
+  $('saveStatus').textContent='saving...';
+  try{
+    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider_models:pm,disabled_benchmarks:disabled,sampling})});
+    const j=await r.json();
+    $('saveStatus').textContent='Saved: '+(j.saved||[]).join(', ');
+    settingsData=null; // force reload on next visit
+  }catch(e){$('saveStatus').textContent='Error: '+e;}
+}
+
+/* ===== Reports ===== */
+let industryData=null;
+async function loadReports(){
+  let html='';
+  // Download buttons
+  html+='<div class="subsection"><div class="section-title">Download Reports</div>';
+  html+='<div class="dl-buttons">';
+  html+='<button class="primary" onclick="window.location=\'/api/export/csv\'">&#11015; CSV</button>';
+  html+='<button class="primary" onclick="window.location=\'/api/export/json\'">&#11015; JSON</button>';
+  html+='<button class="primary" onclick="window.location=\'/api/export/markdown\'">&#11015; Markdown</button>';
+  html+='</div></div>';
+  // Industry reference
+  html+='<div class="subsection"><div class="section-title">Industry Benchmark Reference</div>';
+  html+='<div id="industryContent">Loading...</div></div>';
+  $('tab-reports').innerHTML=html;
+  if(!industryData){
+    try{industryData=await get('/api/industry');}catch(e){$('industryContent').innerHTML='Error: '+e;return;}
+  }
+  renderIndustry();
+}
+function renderIndustry(){
+  const d=industryData;
+  let html='<div class="table-wrap"><table class="industry-table"><thead><tr><th>Benchmark</th><th>Kind</th><th>Description</th><th>Max</th></tr></thead><tbody>';
+  for(const[k,v]of Object.entries(d.benchmarks)){
+    html+='<tr><td><strong>'+v.name+'</strong><span class="tag">'+k+'</span></td><td>'+v.kind+'</td><td>'+v.description+'</td><td>'+v.max_score+'</td></tr>';
+  }
+  html+='</tbody></table></div>';
+  // Published scores
+  html+='<div class="section-title" style="margin-top:18px">Published / Advertised Scores</div>';
+  html+='<div class="table-wrap"><table><thead><tr><th>Model</th>';
+  const allBench= new Set();
+  for(const m of Object.keys(d.published_scores)){for(const b of Object.keys(d.published_scores[m]))allBench.add(b);}
+  const benchList=Array.from(allBench).sort();
+  html+=benchList.map(b=>'<th>'+b+'</th>').join('')+'</tr></thead><tbody>';
+  for(const[m,scores]of Object.entries(d.published_scores)){
+    html+='<tr><td><strong>'+m+'</strong></td>'+benchList.map(b=>{const v=scores[b];return v!=null?'<td>'+v.toFixed(1)+'%</td>':'<td class="na">-</td>';}).join('')+'</tr>';
+  }
+  html+='</tbody></table></div>';
+  $('industryContent').innerHTML=html;
+}
+
+/* ===== Run ===== */
 function renderRun(){
   const c=S.config;
   let h='<div class="note">The run trigger executes model-generated code locally and spends API quota. It is disabled unless the server was started with <code>OLLAMA_EVAL_ENABLE_RUN=1</code>. Arguments are validated and never passed through a shell.</div>';
-  h+='<div class="col">';
-  h+='<div class="fld"><div class="label">Provider</div><select id="rProv">'+c.providers.map(p=>'<option>'+p+'</option>').join('')+'</select></div>';
-  h+='<div class="fld"><div class="label">Models (comma list or <code>auto</code>)</div><input id="rModels" value="auto"></div>';
-  h+='<div class="fld"><div class="label">Benchmarks (comma list / profile / <code>all</code>)</div><input id="rBench" value="mmlu,gsm8k"></div>';
-  h+='<div class="fld"><div class="label">Engine</div><select id="rEng"><option>builtin</option><option>lm_eval</option><option>evalplus</option></select></div>';
+  h+='<div class="col" style="max-width:600px">';
+  h+='<label>Provider: <select id="rProv"><option value="all">all (curated)</option>'+c.providers.map(p=>'<option>'+p+'</option>').join('')+'</select></label>';
+  h+='<label>Models: <input id="rModels" value="auto" type="text"></label>';
+  h+='<label>Benchmarks: <input id="rBench" value="mmlu,gsm8k" type="text"></label>';
+  h+='<label>Engine: <select id="rEng"><option>builtin</option><option>lm_eval</option><option>evalplus</option></select></label>';
   h+='<label><input type="checkbox" id="rQuick" checked> quick (small samples)</label>';
-  h+='<div class="row"><button onclick="startRun()">&#9654; Start run</button><span class="meta" id="runStatus"></span></div>';
+  h+='<div class="row"><button class="primary" onclick="startRun()">&#9654; Start run</button><span class="meta" id="runStatus"></span></div>';
   h+='</div>';
   $('tab-run').innerHTML=h;
 }
 async function startRun(){
   const body={provider:$('rProv').value,models:$('rModels').value,benchmarks:$('rBench').value,engine:$('rEng').value,quick:$('rQuick').checked};
-  $('runStatus').textContent='starting\u2026';
+  $('runStatus').textContent='starting...';
   try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     $('runStatus').textContent=j.ok?j.message:('error: '+(j.error||r.status));
