@@ -92,8 +92,11 @@ def _t2():
 
 @case("mcq logprob absent -> generate fallback correct")
 def _t3():
-    # present=False forces the fallback; canned generate returns "C".
-    res = score_mcq(FakeClient(generate="C"), "m", _mcq_item(2), shots=[], cot=False,
+    # present=False forces the fallback; the FakeClient returns canned text
+    # for chat_text. The new generate path uses a system+user message format.
+    fc = FakeClient()
+    fc._text = "C"
+    res = score_mcq(fc, "m", _mcq_item(2), shots=[], cot=False,
                     temperature=0.0, max_tokens=8)
     return res["correct"] is True and res["method"] == "generate_fallback"
 
