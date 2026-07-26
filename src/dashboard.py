@@ -11,6 +11,7 @@ value. Provider is derived from each record's ``base_url``.
 """
 from __future__ import annotations
 
+import time
 from urllib.parse import urlparse
 
 from .config import Config, PROVIDERS
@@ -55,8 +56,16 @@ def _latest(records) -> dict:
     return best
 
 
+_RECORDS_CACHE = {"t": 0.0, "data": None}
+_RECORDS_TTL = 5.0  # seconds
+
+
 def _records() -> list:
-    return load_all_results()
+    now = time.time()
+    if _RECORDS_CACHE["data"] is None or now - _RECORDS_CACHE["t"] > _RECORDS_TTL:
+        _RECORDS_CACHE["data"] = load_all_results()
+        _RECORDS_CACHE["t"] = now
+    return _RECORDS_CACHE["data"]
 
 
 def overview(cfg: Config) -> dict:
