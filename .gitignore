@@ -14,7 +14,7 @@
 /_db*.py
 /_test*.py
 /_live*.py
-/_tmp*.py
+/_tmp*
 /test_api*.py
 /scratch/
 
