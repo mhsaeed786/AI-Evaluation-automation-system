@@ -60,6 +60,19 @@ def _limit(items: Iterator, limit: int | None) -> list:
     return xs if not limit else xs[:limit]
 
 
+def _field(row, *keys):
+    """First present value among keys, trying common casings (MathArena/aime_*
+    use 'Problem'/'Answer'). Returns None if none found."""
+    if not isinstance(row, dict):
+        return None
+    for k in keys:
+        for cand in (k, k.capitalize(), k.upper(), k.lower()):
+            v = row.get(cand)
+            if v not in (None, ""):
+                return v
+    return None
+
+
 # ----------------------------------------------------------------------
 # MCQ loaders
 # ----------------------------------------------------------------------
@@ -138,7 +151,8 @@ def load_winogrande(spec, *, limit=None) -> list[dict]:
 
 
 def load_truthfulqa(spec, *, limit=None) -> list[dict]:
-    ds = _hf_load("truthfulqa/truthfulqa-mc", name=spec.get("config") or "multiple_choice",
+    ds = _hf_load(spec.get("dataset") or "truthfulqa/truthful_qa",
+                  name=spec.get("config") or "multiple_choice",
                   split=spec.get("split", "validation"))
     out = []
     for i, r in enumerate(ds):
@@ -381,17 +395,17 @@ def load_aime_2024(spec, *, limit=None) -> list[dict]:
 
 
 def load_aime_2025(spec, *, limit=None) -> list[dict]:
-    """AIME 2025 (held Feb 2025). Mirror on HuggingFaceH4/aime_2025."""
-    ds = _hf_load("HuggingFaceH4/aime_2025", split=spec.get("split", "train"))
+    """AIME 2025 (MathArena/aime_2025)."""
+    ds = _hf_load(spec.get("dataset") or "MathArena/aime_2025", split=spec.get("split", "train"))
     out = []
     for i, r in enumerate(ds):
-        ans = str(r.get("answer", "")).strip()
+        ans = str(_field(r, "answer") or "").strip()
         if not ans:
             continue
         out.append({
             "kind": "math",
             "id": f"aime25-{i}",
-            "question": r["problem"],
+            "question": _field(r, "problem", "question") or "",
             "gold": ans,
             "gold_number": _parse_number(ans),
         })
@@ -833,16 +847,19 @@ def load_gpqa_diamond(spec, *, limit=None) -> list[dict]:
 
 
 def load_aime_2026(spec, *, limit=None) -> list[dict]:
-    """AIME 2026: American Invitational Mathematics Examination benchmark."""
-    ds = _hf_load("AI-MO/aimo-validation-aime", split=spec.get("split", "train"))
+    """AIME 2026: American Invitational Mathematics Examination (MathArena/aime_2026)."""
+    ds = _hf_load(spec.get("dataset") or "MathArena/aime_2026", split=spec.get("split", "train"))
     out = []
     for i, r in enumerate(ds):
-        ans = str(r.get("answer", "")).strip()
+        ans = str(_field(r, "answer") or "").strip()
+        if not ans:
+            continue
         out.append({
             "kind": "math",
             "id": f"aime2026-{i}",
-            "question": r.get("problem") or r.get("question") or "",
+            "question": _field(r, "problem", "question") or "",
             "gold": ans,
+            "gold_number": _parse_number(ans),
         })
     return _limit(iter(out), limit)
 

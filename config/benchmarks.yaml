@@ -1,36 +1,20 @@
-# =====================================================================
-#  Benchmark registry
-# =====================================================================
-# Each entry tells the runner how to run + score one benchmark through
-# the builtin engine (Tier 1). The optional harness wrappers
-# (Tier 2) read these hints too where applicable.
-#
-# kind:
-#   mcq       -> multiple-choice, scored by answer-letter logprob
-#                (falls back to generate-and-parse if no logprobs)
-#   math      -> free-form, scored by final-answer extraction + exact match
-#   code      -> free-form, scored by executing against a test suite
-# engine:    builtin | lm_eval | evalplus
-# =====================================================================
-
 benchmarks:
-  # ---------- Knowledge / multiple-choice --------------------------
   mmlu:
     cot: true
     kind: mcq
     engine: builtin
-    dataset: cais/mmlu        # HF path
-    config: all               # combined subject split
+    dataset: cais/mmlu
+    config: all
     split: test
     n_shot: 5
     metric: acc
-    limit: null               # null = full set; set int for a quick run
+    limit: null
   mmlu_pro:
     kind: mcq
     engine: builtin
     dataset: TIGER-Lab/MMLU-Pro
     config: default
-    split: validation         # MMLU-Pro ships gold only on validation/test
+    split: validation
     n_shot: 5
     metric: acc
     limit: null
@@ -40,7 +24,7 @@ benchmarks:
     dataset: allenai/ai2_arc
     config: ARC-Challenge
     split: test
-    n_shot: 25                # ARC uses 25-shot on leaderboards
+    n_shot: 25
     metric: acc_norm
     limit: null
   hellaswag:
@@ -61,47 +45,34 @@ benchmarks:
     n_shot: 5
     metric: acc
     limit: null
-
-  # ---------- Truthfulness / reasoning -----------------------------
   truthfulqa:
     kind: mcq
     engine: builtin
-    dataset: truthfulqa/truthfulqa-mc
+    dataset: truthfulqa/truthful_qa
     config: multiple_choice
     split: validation
     n_shot: 0
-    metric: mc1               # reports mc1 (and mc2 where available)
+    metric: mc1
     limit: null
   gpqa:
     kind: mcq
     engine: builtin
     dataset: Idavidrein/gpqa
-    config: gpqa_main         # gpqa_main | gpqa_diamond | gpqa_extended
+    config: gpqa_main
     split: train
-    n_shot: 0                 # GPQA is reported 0-shot (CoT optional)
+    n_shot: 0
     metric: acc
-    cot: true                 # chain-of-thought before answering
+    cot: true
     limit: null
   bbh:
     kind: mcq
     engine: builtin
     dataset: lukaemon/bbh
-    config: ""                # BBH is a config collection; runner enumerates
+    config: ''
     split: test
     n_shot: 3
     metric: acc
     limit: null
-  agieval:
-    kind: mcq
-    engine: builtin
-    dataset: hails/agieval
-    config: ""                # runner enumerates subtasks
-    split: test
-    n_shot: 0
-    metric: acc
-    limit: null
-
-  # ---------- Math --------------------------------------------------
   gsm8k:
     cot: true
     kind: math
@@ -110,19 +81,17 @@ benchmarks:
     config: main
     split: test
     n_shot: 8
-    metric: acc               # exact-match on final numeric answer
+    metric: acc
     limit: null
   math:
     kind: math
     engine: builtin
-    dataset: EleutherAI/hendrycks_math   # or lighteval/MATH
+    dataset: EleutherAI/hendrycks_math
     config: algebra
     split: test
     n_shot: 4
     metric: acc
     limit: null
-
-  # ---------- Code (builtin sandbox) -------------------------------
   humaneval:
     kind: code
     engine: builtin
@@ -131,20 +100,18 @@ benchmarks:
     split: test
     n_shot: 0
     metric: pass@1
-    samples_per_task: 1       # raise to 20/200 for pass@10/@100
+    samples_per_task: 1
     limit: null
   mbpp:
     kind: code
     engine: builtin
     dataset: google-research-datasets/mbpp
-    config: full              # full | sanitized
+    config: full
     split: test
     n_shot: 0
     metric: pass@1
     samples_per_task: 1
     limit: null
-
-  # ---------- Code (Tier-2 harnesses; optional) --------------------
   humaneval_plus:
     kind: code
     engine: evalplus
@@ -155,7 +122,6 @@ benchmarks:
     engine: evalplus
     dataset: MBPP
     metric: pass@1
-
   math_500:
     kind: math
     engine: builtin
@@ -175,7 +141,7 @@ benchmarks:
   aime_2025:
     kind: math
     engine: builtin
-    dataset: HuggingFaceH4/aime_2025
+    dataset: MathArena/aime_2025
     split: train
     n_shot: 0
     metric: acc
@@ -196,14 +162,6 @@ benchmarks:
     n_shot: 0
     metric: acc
     limit: null
-  ruler:
-    kind: math
-    engine: builtin
-    dataset: simplescaling/ruler
-    split: test
-    n_shot: 0
-    metric: acc
-    limit: null
   livecodebench:
     kind: code_io
     engine: builtin
@@ -217,14 +175,6 @@ benchmarks:
     engine: builtin
     dataset: bigcode/bigcodebench
     split: v2
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  aider_polyglot:
-    kind: code
-    engine: builtin
-    dataset: aider-ai/polyglot-benchmark
-    split: test
     n_shot: 0
     metric: pass@1
     limit: null
@@ -244,34 +194,10 @@ benchmarks:
     n_shot: 0
     metric: pass@1
     limit: null
-  deepswe:
-    kind: agent_swe
-    engine: builtin
-    dataset: deepseek-ai/DeepSWE
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  arc_agi_2:
-    kind: agent_arc
-    engine: builtin
-    dataset: allenai/arc-agi-2
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
   bfcl:
     kind: agent_bfcl
     engine: builtin
     dataset: gorilla-llm/Berkeley-Function-Calling-Leaderboard
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  tau_bench:
-    kind: agent_tau
-    engine: builtin
-    dataset: sierra-research/tau-bench
     split: test
     n_shot: 0
     metric: pass@1
@@ -285,46 +211,6 @@ benchmarks:
     n_shot: 0
     metric: pass@1
     limit: null
-  terminalbench:
-    kind: agent_terminal
-    engine: builtin
-    dataset: Trelis/terminal-bench
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  osworld:
-    kind: agent_terminal
-    engine: builtin
-    dataset: xlangai/OSWorld
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  intercode:
-    kind: agent_terminal
-    engine: builtin
-    dataset: princeton-nlp/intercode
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  cybench:
-    kind: agent_terminal
-    engine: builtin
-    dataset: cybench/cybench
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  mle_bench:
-    kind: agent_terminal
-    engine: builtin
-    dataset: openai/mle-bench
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
   swe_gym:
     kind: agent_swe
     engine: builtin
@@ -332,14 +218,6 @@ benchmarks:
     split: test
     n_shot: 0
     metric: pass@1
-    limit: null
-  frontiermath:
-    kind: math
-    engine: builtin
-    dataset: EpochAI/frontiermath
-    split: test
-    n_shot: 0
-    metric: acc
     limit: null
   mixeval:
     kind: mcq
@@ -362,47 +240,15 @@ benchmarks:
   aime_2026:
     kind: math
     engine: builtin
-    dataset: HuggingFaceH4/aime_2026
+    dataset: MathArena/aime_2026
     split: train
     n_shot: 0
     metric: acc
-    limit: null
-  olympiadbench:
-    kind: math
-    engine: builtin
-    dataset: HuggingFaceH4/OlympiadBench
-    split: test
-    n_shot: 0
-    metric: acc
-    limit: null
-  codeforces_bench:
-    kind: code_io
-    engine: builtin
-    dataset: codeforces/competitive_programming
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  swebench_pro:
-    kind: agent_swe
-    engine: builtin
-    dataset: princeton-nlp/SWE-bench_Pro
-    split: test
-    n_shot: 0
-    metric: pass@1
     limit: null
   ifeval:
     kind: mcq
     engine: builtin
     dataset: google/IFEval
-    split: train
-    n_shot: 0
-    metric: acc
-    limit: null
-  arena_hard:
-    kind: mcq
-    engine: builtin
-    dataset: LMSYS/arena-hard-v0.1
     split: train
     n_shot: 0
     metric: acc
@@ -415,24 +261,6 @@ benchmarks:
     n_shot: 0
     metric: acc
     limit: null
-  webarena:
-    kind: agent_terminal
-    engine: builtin
-    dataset: web-arena/webarena
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-  ctfbench:
-    kind: agent_terminal
-    engine: builtin
-    dataset: ctfbench/ctfbench
-    split: test
-    n_shot: 0
-    metric: pass@1
-    limit: null
-
-# Quick smoke profile: small limits for a fast end-to-end check.
 quick_limits:
   mmlu: 12
   arc_challenge: 50
@@ -443,22 +271,9 @@ quick_limits:
   math_500: 25
   livecodebench: 10
   swebench_verified: 5
-  aider_polyglot: 10
-  terminalbench: 5
-  osworld: 5
-  intercode: 5
-  cybench: 5
-  mle_bench: 5
   swe_gym: 5
-  frontiermath: 5
   mixeval: 10
   gpqa_diamond: 5
   aime_2026: 5
-  olympiadbench: 5
-  codeforces_bench: 5
-  swebench_pro: 5
   ifeval: 10
-  arena_hard: 5
   musr: 5
-  webarena: 5
-  ctfbench: 5
