@@ -1,0 +1,11 @@
+{
+  "name": "fhir-server",
+  "type": "rest",
+  "description": "FHIR R4 server connector for OpenClaw",
+  "config": {
+    "base_url": "https://fhir.curemd.com/fhir/R4",
+    "version": "R4",
+    "operations": ["read", "search", "create", "update", "delete", "validate"],
+    "auth": {"type": "oauth2", "smart_launch": true}
+  }
+}

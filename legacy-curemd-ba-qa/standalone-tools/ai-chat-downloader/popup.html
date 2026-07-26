@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat Downloader</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 380px;
+      min-height: 480px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+    }
+    .header {
+      background: linear-gradient(135deg, #238636 0%, #1f6feb 100%);
+      padding: 16px;
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .header p { font-size: 11px; color: rgba(255,255,255,0.8); }
+    .platforms {
+      padding: 12px 16px;
+      border-bottom: 1px solid #21262d;
+    }
+    .platforms h2 {
+      font-size: 12px;
+      color: #8b949e;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    .platform-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .platform-item .name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .status-dot.active { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+    .status-dot.inactive { background: #484f58; }
+    .platform-item .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #1f6feb22;
+      color: #58a6ff;
+    }
+    .platform-item .badge.current {
+      background: #23863622;
+      color: #3fb950;
+    }
+    .actions {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 10px 16px;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #238636, #2ea043);
+      color: #fff;
+      border-color: #238636;
+    }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-primary:disabled {
+      background: #21262d;
+      color: #484f58;
+      border-color: #30363d;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+    }
+    .btn-secondary:hover { background: #30363d; }
+    .btn-secondary:disabled {
+      color: #484f58;
+      cursor: not-allowed;
+    }
+    .progress-section {
+      padding: 0 16px 16px;
+      display: none;
+    }
+    .progress-section.visible { display: block; }
+    .progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: #21262d;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #238636, #1f6feb);
+      border-radius: 3px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+    .status-text {
+      font-size: 11px;
+      color: #8b949e;
+    }
+    .settings {
+      padding: 16px;
+      border-top: 1px solid #21262d;
+    }
+    .settings h2 {
+      font-size: 12px;
+      color: #8b949e;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .setting-row label { font-size: 12px; }
+    .setting-row input[type="text"] {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      width: 180px;
+    }
+    .setting-row select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .log-area {
+      margin: 0 16px 16px;
+      max-height: 100px;
+      overflow-y: auto;
+      background: #010409;
+      border: 1px solid #21262d;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: 'Consolas', monospace;
+      font-size: 10px;
+      color: #8b949e;
+      display: none;
+    }
+    .log-area.visible { display: block; }
+    .log-entry { margin-bottom: 2px; }
+    .log-entry.error { color: #f85149; }
+    .log-entry.success { color: #3fb950; }
+    .log-entry.info { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 AI Chat Downloader</h1>
+    <p>Export conversations from AI platforms</p>
+  </div>
+
+  <div class="platforms">
+    <h2>Supported Platforms</h2>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-chatgpt"></span> ChatGPT</span>
+      <span class="badge" id="badge-chatgpt">—</span>
+    </div>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-gemini"></span> Gemini</span>
+      <span class="badge" id="badge-gemini">—</span>
+    </div>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-deepseek"></span> DeepSeek</span>
+      <span class="badge" id="badge-deepseek">—</span>
+    </div>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-zai"></span> ZAI</span>
+      <span class="badge" id="badge-zai">—</span>
+    </div>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-grok"></span> Grok</span>
+      <span class="badge" id="badge-grok">—</span>
+    </div>
+    <div class="platform-item">
+      <span class="name"><span class="status-dot inactive" id="dot-perplexity"></span> Perplexity</span>
+      <span class="badge" id="badge-perplexity">—</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="btn-download-all" disabled>📥 Download All Chats</button>
+    <button class="btn-secondary" id="btn-download-current" disabled>📄 Download Current Chat</button>
+    <button class="btn-secondary" id="btn-scan">🔍 Scan Platform</button>
+  </div>
+
+  <div class="progress-section" id="progress-section">
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div class="status-text" id="status-text">Initializing...</div>
+  </div>
+
+  <div class="log-area" id="log-area"></div>
+
+  <div class="settings">
+    <h2>Settings</h2>
+    <div class="setting-row">
+      <label>Output Format:</label>
+      <select id="output-format">
+        <option value="json">JSON</option>
+        <option value="markdown">Markdown</option>
+        <option value="html">HTML</option>
+        <option value="txt">Plain Text</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <label>Subfolder:</label>
+      <input type="text" id="output-dir" value="AI-Chats" placeholder="Folder name">
+    </div>
+    <div class="setting-row">
+      <label>Include Metadata:</label>
+      <select id="include-metadata">
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

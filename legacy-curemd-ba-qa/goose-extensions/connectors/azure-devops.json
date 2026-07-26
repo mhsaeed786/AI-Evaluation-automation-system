@@ -1,0 +1,13 @@
+{
+  "name": "curemd-azure-devops",
+  "type": "mcp-server",
+  "description": "CureMD Azure DevOps connector for work item management",
+  "config": {
+    "organization_url": "https://devops.curemd.com/CureMD10g/11g",
+    "auth": {
+      "type": "browser",
+      "username": "hassan.saeed@curemd.com"
+    },
+    "operations": ["list_work_items", "create_work_item", "update_work_item", "query_items", "download_repo_zip"]
+  }
+}

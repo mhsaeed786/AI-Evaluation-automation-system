@@ -1,0 +1,32 @@
+---
+name: fhir-trigger-test-suite
+description: Automated FHIR trigger test execution task for Hermes
+framework: hermes
+---
+
+# FHIR Trigger Test Suite (Hermes Task)
+
+## Task Definition
+Automated trigger testing with FHIR_RecordQueue verification.
+
+## Parameters
+- `db_environment`: Database key (default: release01_fhir)
+- `trigger_filter`: Optional filter for specific triggers
+- `cleanup`: Auto-cleanup test data (default: true)
+
+## Execution
+1. Read trigger definitions from database
+2. For each trigger:
+   - Execute INSERT with test data
+   - Verify RecordQueue entry
+   - Execute UPDATE on tracked columns
+   - Verify RecordQueue entry
+   - Execute DELETE (cleanup)
+   - Verify RecordQueue entry
+3. Generate test report
+
+## Output
+- Pass/fail matrix per trigger
+- Detailed query log
+- Execution time metrics
+- JSON results for integration

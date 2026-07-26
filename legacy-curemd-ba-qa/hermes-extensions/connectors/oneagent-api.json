@@ -1,0 +1,18 @@
+{
+  "name": "oneagent-api",
+  "type": "rest",
+  "description": "OneAgent API connector for Hermes",
+  "config": {
+    "base_url": "http://localhost:8000",
+    "auth": {"type": "api_key", "header": "X-API-Key"},
+    "endpoints": [
+      {"method": "GET", "path": "/modules", "description": "List modules"},
+      {"method": "POST", "path": "/agent/run", "description": "Run agent"},
+      {"method": "POST", "path": "/llm/complete", "description": "LLM completion"},
+      {"method": "GET", "path": "/llm/providers", "description": "List providers"},
+      {"method": "POST", "path": "/meta/generate", "description": "Generate module"},
+      {"method": "POST", "path": "/scheduler/fire-event", "description": "Fire event"},
+      {"method": "GET", "path": "/skills", "description": "List skills"}
+    ]
+  }
+}

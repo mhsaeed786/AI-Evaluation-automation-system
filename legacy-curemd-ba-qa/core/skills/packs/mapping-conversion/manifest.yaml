@@ -1,0 +1,16 @@
+name: mapping-conversion
+description: Convert old FHIR mapping formats to USCDI V3 hierarchy with trigger mapping sheets
+version: "1.0"
+author: OneAgent
+category: healthcare
+tools:
+  - read_excel
+  - write_excel
+  - query_database
+parameters:
+  source_file:
+    type: string
+    description: Path to source mapping file
+  pipelines:
+    type: array
+    description: Pipelines to process (LEAP-10G, LEAP-11X, FHIR-10G, FHIR-11X, UDS+)

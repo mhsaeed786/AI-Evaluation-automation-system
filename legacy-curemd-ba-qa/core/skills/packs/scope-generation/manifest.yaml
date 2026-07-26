@@ -1,0 +1,17 @@
+name: scope-generation
+description: Generate SMART on FHIR v1 and v2 scopes for all FHIR R4 resources
+version: "1.0"
+author: OneAgent
+category: healthcare
+tools:
+  - fhir_search
+  - query_database
+parameters:
+  fhir_version:
+    type: string
+    description: FHIR version
+    default: R4
+  include_filters:
+    type: boolean
+    description: Include v2 filter scopes
+    default: true

@@ -1,0 +1,46 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="curemd-ba-qa-automation-suite",
+    version="1.0.0",
+    description="CureMD Business Analyst & QA Automation Suite - Healthcare IT FHIR Testing & Analysis",
+    author="CureMD BA/QA Team",
+    author_email="automation@curemd.com",
+    packages=find_packages(),
+    python_requires=">=3.10",
+    install_requires=[
+        "streamlit>=1.31.0",
+        "pandas>=2.1.0",
+        "openpyxl>=3.1.2",
+        "requests>=2.31.0",
+        "pyodbc>=5.0.1",
+        "beautifulsoup4>=4.12.0",
+        "playwright>=1.41.0",
+        "openai>=1.12.0",
+        "anthropic>=0.18.0",
+        "google-generativeai>=0.3.0",
+        "tiktoken>=0.6.0",
+        "plotly>=5.18.0",
+        "sqlalchemy>=2.0.0",
+        "jsonschema>=4.21.0",
+        "python-dateutil>=2.8.0",
+        "pyyaml>=6.0.1",
+        "schedule>=1.2.0",
+        "httpx>=0.26.0",
+        "jinja2>=3.1.3",
+    ],
+    entry_points={
+        "console_scripts": [
+            "curemd-automation=ui.app:main",
+        ],
+    },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Healthcare Industry",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Software Testing",
+        "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    ],
+)

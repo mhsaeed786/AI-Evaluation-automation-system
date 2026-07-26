@@ -1,0 +1,17 @@
+{
+  "name": "curemd-sharepoint",
+  "type": "mcp-server",
+  "description": "CureMD SharePoint connector for file operations",
+  "config": {
+    "site_url": "https://curemdinc.sharepoint.com/sites/ApplicationImprovementsTeam/",
+    "auth": {
+      "type": "browser",
+      "username": "hassan.saeed@curemd.com"
+    },
+    "lists": [
+      "FHIR Sync Status",
+      "FHIR Mapping Status"
+    ],
+    "operations": ["list_items", "download_attachments", "upload_files", "read_list"]
+  }
+}

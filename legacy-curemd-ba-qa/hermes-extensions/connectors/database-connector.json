@@ -1,0 +1,14 @@
+{
+  "name": "curemd-database",
+  "type": "database",
+  "description": "CureMD SQL Server connector for Hermes",
+  "config": {
+    "connections": [
+      {"name": "10g-fhir", "server": "Release01", "database": "FHIR_CureMD"},
+      {"name": "10g-muii", "server": "Release01", "database": "MUII_CUREMD"},
+      {"name": "11x-muii", "server": "baseline11x_Curemd", "database": "MUII_CUREMD"}
+    ],
+    "driver": "ODBC Driver 17 for SQL Server",
+    "timeout": 30
+  }
+}

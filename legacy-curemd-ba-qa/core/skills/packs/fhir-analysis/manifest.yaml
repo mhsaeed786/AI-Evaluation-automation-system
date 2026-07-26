@@ -1,0 +1,17 @@
+name: fhir-analysis
+description: Analyze FHIR R4 resources, validate against USCDI V3, find inconsistencies
+version: "1.0"
+author: OneAgent
+category: healthcare
+tools:
+  - query_database
+  - fhir_search
+  - fhir_validate
+parameters:
+  resource_type:
+    type: string
+    description: FHIR resource type to analyze
+  server:
+    type: string
+    description: FHIR server to query
+    default: curemd

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+*.key
+*.pem
+*.p12
+
+# Build output
+dist/
+build/
+*.cjs
+*.js.map
+
+# AI Studio internal
+.aistudio/
+
+# SQLite databases (runtime data)
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Lockfiles (keep package-lock, ignore bun)
+bun.lock
+bun.lockb
+
+# Logs
+*.log
+logs/

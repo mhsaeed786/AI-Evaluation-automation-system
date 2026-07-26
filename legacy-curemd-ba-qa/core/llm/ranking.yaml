@@ -1,0 +1,95 @@
+# OneAgent LLM Model Rankings
+# Edit this file to change model preference per task class.
+# Lower rank = preferred first. Router tries in order until one succeeds.
+# Budget caps in core/llm/budget.py still apply over the top of this.
+
+defaults:
+  # Global fallback order when no task class matches
+  - provider: ollama
+    model: llama3.1:8b
+  - provider: groq
+    model: llama-3.3-70b-versatile
+  - provider: deepseek
+    model: deepseek-chat
+  - provider: gemini
+    model: gemini-2.0-flash
+  - provider: anthropic
+    model: claude-sonnet-4-20250514
+  - provider: openai
+    model: gpt-4o
+
+task_classes:
+  classify:
+    # Short classification — cheap models suffice
+    - provider: groq
+      model: llama-3.3-70b-versatile
+    - provider: gemini
+      model: gemini-2.0-flash
+    - provider: deepseek
+      model: deepseek-chat
+
+  extract:
+    # Data extraction / parsing
+    - provider: gemini
+      model: gemini-2.0-flash
+    - provider: groq
+      model: llama-3.3-70b-versatile
+    - provider: deepseek
+      model: deepseek-chat
+
+  reason:
+    # Complex reasoning — needs stronger models
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+    - provider: openai
+      model: gpt-4o
+    - provider: deepseek
+      model: deepseek-chat
+
+  code:
+    # Code generation / review
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+    - provider: openai
+      model: gpt-4o
+    - provider: deepseek
+      model: deepseek-coder
+
+  long_context:
+    # Large documents / FHIR bundles
+    - provider: gemini
+      model: gemini-2.0-flash
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+
+  vision:
+    # Image analysis
+    - provider: openai
+      model: gpt-4o
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+    - provider: gemini
+      model: gemini-2.0-flash
+
+  healthcare:
+    # FHIR / medical domain — accuracy critical
+    - provider: anthropic
+      model: claude-sonnet-4-20250514
+    - provider: openai
+      model: gpt-4o
+    - provider: gemini
+      model: gemini-2.0-flash
+
+  summarize:
+    # Summarization tasks
+    - provider: groq
+      model: llama-3.3-70b-versatile
+    - provider: gemini
+      model: gemini-2.0-flash
+    - provider: deepseek
+      model: deepseek-chat
+
+  embed:
+    # Embedding tasks (only providers that support it)
+    - provider: openai
+      model: text-embedding-3-small

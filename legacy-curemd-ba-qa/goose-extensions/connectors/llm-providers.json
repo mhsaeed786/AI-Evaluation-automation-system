@@ -1,0 +1,17 @@
+{
+  "name": "llm-router",
+  "type": "mcp-server",
+  "description": "Unified LLM provider connector with cost ranking",
+  "config": {
+    "providers": [
+      {"name": "ollama", "base_url": "http://localhost:11434", "cost_rank": 1, "models": ["llama3", "gemma2", "mistral"]},
+      {"name": "groq", "cost_rank": 2, "models": ["llama-3.1-70b", "mixtral-8x7b"]},
+      {"name": "deepseek", "cost_rank": 3, "models": ["deepseek-chat", "deepseek-coder"]},
+      {"name": "google", "cost_rank": 4, "models": ["gemini-pro", "gemini-1.5-flash"]},
+      {"name": "anthropic", "cost_rank": 5, "models": ["claude-3-haiku", "claude-3.5-sonnet"]},
+      {"name": "openai", "cost_rank": 6, "models": ["gpt-4o-mini", "gpt-4o"]}
+    ],
+    "routing_strategy": "cost-first",
+    "fallback_chain": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "OneAgent Super-App",
+  "description": "Unified Personal Agentic Platform with LLM Router, Modular Limbs (FHIR, LEAP, Research, WorkOps), MCPs, Skills, Cron Scheduler, RAG Memory, and Meta Self-Authoring Engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

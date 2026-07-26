@@ -1,0 +1,34 @@
+{
+  "name": "curemd-database",
+  "type": "mcp-server",
+  "description": "CureMD database connector for SQL Server operations",
+  "config": {
+    "connections": [
+      {
+        "name": "10g-fhir",
+        "server": "Release01",
+        "database": "FHIR_CureMD",
+        "username": "curemd",
+        "password": "cure2000",
+        "driver": "ODBC Driver 17 for SQL Server"
+      },
+      {
+        "name": "10g-muii",
+        "server": "Release01",
+        "database": "MUII_CUREMD",
+        "username": "curemd",
+        "password": "cure2000",
+        "driver": "ODBC Driver 17 for SQL Server"
+      },
+      {
+        "name": "11x-muii",
+        "server": "baseline11x_Curemd",
+        "database": "MUII_CUREMD",
+        "username": "curemd",
+        "password": "cure2000",
+        "driver": "ODBC Driver 17 for SQL Server"
+      }
+    ],
+    "operations": ["query", "execute", "describe_table", "list_tables", "get_schema"]
+  }
+}

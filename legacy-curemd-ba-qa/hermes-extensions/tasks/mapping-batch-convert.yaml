@@ -1,0 +1,31 @@
+---
+name: mapping-batch-convert
+description: Batch mapping conversion from old format to USCDI V3 (Hermes task)
+framework: hermes
+---
+
+# Mapping Batch Convert (Hermes Task)
+
+## Task Definition
+Batch convert FHIR mapping files from old format to USCDI V3.
+
+## Parameters
+- `source_dir`: Directory containing source mapping files
+- `output_dir`: Output directory for converted files
+- `pipelines`: Pipelines to process (default: all)
+- `validate`: Validate against FHIR spec (default: true)
+
+## Execution
+1. Scan source directory for mapping files
+2. For each file:
+   - Parse old format (dot-notation)
+   - Convert to USCDI V3 hierarchy
+   - Map trigger columns
+   - Validate if requested
+3. Generate unified workbooks
+4. Save to output directory
+
+## Output
+- One workbook per resource with pipeline sheets
+- Conversion log with statistics
+- Validation results
