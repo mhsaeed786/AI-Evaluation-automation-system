@@ -1,204 +1,118 @@
-# 🧠 OneAgent — AI Evaluation & Automation System
+# AI Evaluation Automation System
 
-> An open-source **generalist AI agent** that learns automatically from your data — emails, Teams, Slack, local files, Jira, Azure DevOps — and then **creates specialist extensions to itself called "Limbs."** Built as an alternative to Manus, Goose, Hermes, and OpenClaw — but with a twist: it **evolves** into a set of personal specialists by studying your work.
+Benchmark **every** AI model from **every** provider against the same suite
+of industry benchmarks (MMLU, GPQA, GSM8K, HumanEval, SWE-bench, AIME, and
+25+ more) — then compare *measured* scores against *vendor-advertised* scores
+to verify whether the metrics claimed by providers are actually correct, or
+whether providers dial down metrics to improve cost, or fake model names to
+save cost (e.g. serving glm-5-turbo behind a glm-5.2 tag).
 
-<div align="center">
-
-**Base generalist** → ingests your data → **specialist limbs** → automates your life
-
-</div>
-
----
-
-## 📦 Repository Structure
+## Repository structure
 
 ```
-AI-Evaluation-automation-system/
+.
+├── src/                     # Core evaluation engine (Python)
+│   ├── config.py            #   Config loading + provider registry
+│   ├── ollama_client.py     #   OpenAI-compatible chat client + retries
+│   ├── provider_clients.py  #   Anthropic + Gemini native adapters
+│   ├── loaders.py           #   HuggingFace dataset loaders (31 benchmarks)
+│   ├── scorers.py           #   MCQ / math / code scoring functions
+│   ├── scoring_types.py     #   Shared types (LetterScores)
+│   ├── engines/
+│   │   └── builtin.py       #   Default scoring engine
+│   ├── runner.py            #   CLI runner (parallel providers)
+│   ├── results.py           #   Result record + JSON persistence
+│   ├── compare.py           #   Measured vs advertised comparison
+│   ├── report.py            #   Markdown report generator
+│   ├── dashboard.py         #   Web UI data layer
+│   ├── server.py            #   Flask web app (threaded)
+│   └── smoke_test.py        #   Endpoint/key connectivity test
+├── harnesses/               # Tier-2 harness wrappers (lm-eval, EvalPlus)
+├── config/                  # YAML configuration
+│   ├── models.yaml          #   Model registry + profiles
+│   ├── benchmarks.yaml      #   Benchmark registry (31 benchmarks)
+│   ├── providers.yaml       #   Per-provider curated model lists
+│   └── published_scores.yaml#   Vendor-advertised reference scores
+├── templates/
+│   └── index.html           #   Web dashboard SPA (8 tabs)
+├── tests/
+│   └── test_scoring.py      #   Offline scorer self-test (12 cases)
+├── requirements.txt         #   Tier-1 deps (builtin engine, no torch)
+├── requirements-harness.txt #   Tier-2 deps (lm-eval, EvalPlus)
+├── run.ps1                  #   Windows bootstrap + launcher
+├── .env.example             #   Environment template (all providers)
 │
-├── oneagent-super-app/          ← 🚀 NEW: Google AI Studio React app (TypeScript)
-│   ├── src/                     # React 19 frontend — dashboard, limbs, specialist evolution
-│   ├── core/meta/               # Python meta self-authoring engine
-│   ├── server.ts                # Express + Gemini API backend
-│   ├── package.json
-│   └── README.md
-│
-└── legacy-curemd-ba-qa/         ← 📂 OLD: Python CureMD BA/QA Automation Suite
-    ├── api/                     # FastAPI server
-    ├── core/                    # Agent loop, LLM router, meta, RAG, skills
-    ├── modules/                 # FHIR tools
-    ├── goose-extensions/        # Goose recipes/agents/connectors
-    ├── cherry-extensions/       # Cherry Studio extensions
-    ├── openclaw-extensions/     # OpenClaw agents/skills
-    ├── hermes-extensions/       # Hermes workflow tasks
-    ├── tests/
-    └── README.md
+├── oneagent-super-app/      # [separate] OneAgent super-app (React/TS)
+└── legacy-curemd-ba-qa/     # [separate] Legacy CureMD BA/QA suite
 ```
 
----
+## Quick start
 
-## 🎯 What is OneAgent?
-
-OneAgent ships as an **open-source generalist agent app** with strong base capabilities:
-
-| Base Capability | Status |
-|---|---|
-| 🌐 Web Fetch | ✅ Firecrawl-style scraping API |
-| 🖥️ Browser Use | ✅ Playwright headless agent |
-| 🔎 Web Search | ✅ Research + SaaS opportunity finder |
-| 💻 Code Execution | ✅ Sandboxed meta module runner |
-| 🛠️ Coding | ✅ CLI controller, repo scaffolder |
-| 📁 File Ops | ✅ Local file organizer & storage guardian |
-
-### The "Limbs" Concept
-
-The key innovation: OneAgent reads your data (Outlook emails, Teams messages, Slack messages, local files, Jira tickets, Azure DevOps pipelines, imported AI session logs) and automatically **creates extensions to itself called "Limbs."** Each limb is a specialist agent adapted to your specific work:
-
-| Limb | Domain | Tools |
-|---|---|---|
-| 🏥 **FHIR BA/QA Suite** | Healthcare specs & compliance | 14 tools — inconsistency queries, HAPI explorer, cost analysis |
-| 📊 **LEAP Analytics** | Telemetry & real-world testing | 9 tools — RWT, UDS compliance, scaling diagnostics |
-| 🔬 **Deep Research** | Market intelligence | 8 tools — web search, scraping, SaaS gap finder |
-| 📨 **WorkOps & DataSync** | Workflow automation | 11 tools — Outlook triage, Teams, SharePoint |
-| ✍️ **Content & SEO** | Publishing | 6 tools — blog, SEO, social posts |
-| 📂 **Files & Storage** | Data management | 7 tools — organizer, dedup, metadata |
-| 🧑‍💻 **CLI & Code** | Developer tools | 10 tools — scaffolder, diff, test harness |
-
-### How Limbs Are Born (Specialist Evolution Engine)
-
-1. **Ingest** — OneAgent imports past data from all your sources (emails, Slack, Teams, DevOps, local files, and even sessions from other AI tools like Gemini CLI, Goose, Cursor, Claude Desktop)
-2. **Index** — Everything goes into a local SQLite knowledge base with FTS5 + vector embeddings
-3. **Synthesize** — Neurosymbolic rules are derived from patterns in your data (neural LLM pattern recognition + symbolic logic constraints)
-4. **Self-Author** — The meta engine generates new Python modules from natural language descriptions, runs them in an isolated sandbox, tests them, and (after approval) promotes them to first-class limbs
-
----
-
-## 🏗️ Project History
-
-### Phase 1: CureMD BA/QA Automation Suite (Legacy)
-
-The original project — a Python-based automation platform for CureMD's Business Analysis and QA workflows. It had:
-
-- **Multi-LLM Router** — Routes to cheapest available model per task class (classify, reason, code, etc.)
-- **Agentic Loop** — Plan → Execute Tool → Observe → Repeat
-- **FHIR Analysis** — HAPI FHIR server, CureMD FHIR server, terminology servers
-- **Database Automation** — 4 SQL Server databases for BA/QA validation
-- **Self-Extension (Meta)** — Could generate new Python modules from natural language
-- **Skill Packs** — Pre-built for FHIR analysis, gap analysis, content creation
-- **MCP Integration** — Model Context Protocol server host
-
-**Why it was rebuilt:** The legacy suite was functional but fragmented — separate extension folders for Goose, Cherry Studio, OpenClaw, and Hermes. The architecture was solid but the UX was a CLI/Python web UI that didn't clearly show the "generalist → specialist" vision. It was "shit" in the words of its creator — too many disconnected parts, no unified frontend, no clear story for how the agent learns and evolves.
-
-### Phase 2: OneAgent Super-App (New — built with Google AI Studio)
-
-Rebuilt from scratch using **Google AI Studio** for the first time. The new version:
-
-- **Unified React/TypeScript frontend** — Dark dashboard with sidebar navigation, 18+ views
-- **Express + Gemini API backend** — `server.ts` with live `@google/genai` integration
-- **Specialist Evolution Engine** — Three sub-tabs: Local SQLite Knowledge Base (RAG), Cross-Agent Session Importer, and Neurosymbolic Rules
-- **Meta Self-Authoring** — Visual UI for generating, testing, approving/rejecting new modules
-- **LLM Gateway** — Multi-model router with task rankings, budget tracking, cache entries
-- **Agent Runner** — Step-by-step agent loop visualization (plan → tool_call → observe → result)
-- **Integrations Hub** — Connectors for Goose, Cherry, OpenClaw, Hermes via MCP
-- **Scheduler** — Cron jobs for recurring specialist tasks
-- **All 7 Limbs** — FHIR, LEAP, Research, WorkOps, Content, Files, Coding — each with rich UIs
-
----
-
-## 🚀 Run Locally
-
-### OneAgent Super-App (New)
-
-```bash
-cd oneagent-super-app
-
-# Install dependencies
-npm install
-
-# Set your Gemini API key
-# Create .env.local with:
-#   GEMINI_API_KEY=your_key_here
-
-# Run the dev server
-npm run dev
-# → http://localhost:3000
-```
-
-**Prerequisites:** Node.js 18+, Python 3.10+ (for the meta self-authoring engine)
-
-### Legacy CureMD Suite (Old)
-
-```bash
-cd legacy-curemd-ba-qa
-
-# Python setup
+```powershell
+# 1. Install dependencies
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Run CLI
-python cli.py ask "Validate Patient FHIR resource"
+# 2. Add your API keys
+Copy-Item .env.example .env
+# Edit .env with your real keys
 
-# Run API server
-python -m api.main
+# 3. Verify connectivity
+python -m src.smoke_test
 
-# Run standalone local UI
-cd standalone-local && python app.py
+# 4. Run benchmarks (all providers, all benchmarks, small samples)
+python -m src.runner --provider all --models auto --benchmarks all --quick
+
+# 5. Launch the web dashboard
+python -m src.server
+# Open http://127.0.0.1:5000
 ```
 
-**Prerequisites:** Python 3.10+, SQL Server ODBC Driver 17, Playwright (`playwright install chromium`)
+## Providers
 
----
+| Provider | API type | Tier | Notes |
+|---|---|---|---|
+| Ollama Cloud | OpenAI-compat | **paid** | all models |
+| Qwen Cloud | OpenAI-compat | **paid** | all models |
+| GLM / Z.AI | OpenAI-compat | **paid** | all models |
+| Gemini | OpenAI-compat | free | via /v1beta/openai endpoint |
+| Groq | OpenAI-compat | free | |
+| OpenRouter | OpenAI-compat | free | `:free` models only |
+| Cerebras | OpenAI-compat | free | |
+| HuggingFace | OpenAI-compat | free | router.huggingface.co |
+| Cohere | OpenAI-compat | trial | |
+| OpenAI | OpenAI-compat | paid | optional |
+| Anthropic | Anthropic Messages | paid | optional (anthropic SDK) |
+| Together / Mistral / etc. | OpenAI-compat | varies | optional |
 
-## 🔑 Environment Variables
+Providers run **in parallel** via ThreadPoolExecutor (`--jobs`).
 
-### OneAgent Super-App
+## Benchmarks (31)
 
-| Variable | Description | Default |
-|---|---|---|
-| `GEMINI_API_KEY` | Google Gemini API key | `MY_GEMINI_API_KEY` |
-| `APP_URL` | Hosted app URL (for OAuth callbacks) | `MY_APP_URL` |
+Knowledge: MMLU, MMLU-Pro, ARC-Challenge, HellaSwag, WinoGrande, TruthfulQA,
+GPQA, GPQA-Diamond, BBH, MixEval, IFEval, MuSR
 
-### Legacy CureMD Suite
+Math: GSM8K, MATH, MATH-500, AIME 2024/2025/2026, SimpleQA, HLE
 
-| Variable | Description |
-|---|---|
-| `DB_PASS_RELEASE01` | SQL Server password (Release01) |
-| `DB_PASS_BASELINE11X` | SQL Server password (Baseline11x) |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `GEMINI_API_KEY` | Gemini API key |
+Code: HumanEval, MBPP, HumanEval+, MBPP+, LiveCodeBench, BigCodeBench
 
----
+Agent: SWE-bench Lite/Verified, BFCL, GAIA, SWE-gym
 
-## 🧩 Tech Stack
+## Web dashboard
 
-### New Super-App
-- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Lucide icons, Motion
-- **Backend:** Express, Vite middleware, `@google/genai` (Gemini API)
-- **Meta Engine:** Python 3.10+ (sandboxed module generation)
-- **Build:** Vite + esbuild
+8 tabs: Overview, Measured Matrix, Measured vs Advertised Deltas,
+By Provider, Model Compare, Settings, Reports (CSV/JSON/MD download +
+industry reference), Run trigger.
 
-### Legacy Suite
-- **Language:** Python 3.10+
-- **Framework:** FastAPI
-- **LLM:** Multi-provider router (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, Groq, Mistral, Cohere)
-- **Database:** SQL Server (ODBC 17), SQLite
-- **Browser:** Playwright
+## Scoring
 
----
+- **MCQ**: answer-letter logprob (canonical) → generate-and-parse fallback
+  (system prompt forces letter answer for reasoning models)
+- **Math**: final-answer extraction (\boxed{}, Answer:, last number) + exact match
+- **Code**: subprocess pass@1 (HumanEval/MBPP) / stdin-stdout (LiveCodeBench)
+- **Agent**: parse-only baseline (SWE-bench diff, BFCL JSON, GAIA exact-match)
 
-## 📄 License
+## License
 
-This project is open-source. See individual project folders for details.
-
----
-
-## 👤 Author
-
-**mhsaeed786** — Built with Google AI Studio (first time) after the legacy CureMD BA/QA suite proved too fragmented. The goal: one agent that learns your work and evolves into your personal specialist team.
-
----
-
-<div align="center">
-
-**OneAgent** — *Generalist at birth. Specialist by learning.*
-
-</div>
+MIT
