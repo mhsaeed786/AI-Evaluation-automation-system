@@ -41,7 +41,8 @@ class StrReplaceEditor(BaseTool):
             if command == "insert":
                 lines = text.splitlines()
                 lines.insert(insert_line, new_string)
-                p.write_text("\n".join(lines), encoding="utf-8")
+                p.write_text("
+".join(lines), encoding="utf-8")
                 return ToolResult(output=f"Inserted into {path}")
             if command == "undo_edit":
                 hist = self._history.get(path, [])
