@@ -10,8 +10,7 @@ ALLOWED_COMMAND_PREFIXES = {
     "playwright", "pytest", "uvicorn", "ls", "cat", "echo", "mkdir", "cd", "pwd"
 }
 
-DANGEROUS_PATTERNS = re.compile(r"(?:;||||&&|`|$(|${|
-||>s|<s|(s*))")
+DANGEROUS_PATTERNS = re.compile(r"(?:;|\|\||&&|`|\$\(|\$\{|\n|\r|>\s|<\s|\(\s*\))")
 
 def validate_command(cmd: str) -> str:
     if not cmd or not cmd.strip():

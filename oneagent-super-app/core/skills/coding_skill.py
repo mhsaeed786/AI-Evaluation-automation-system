@@ -1,5 +1,6 @@
 from __future__ import annotations
-from .base import Skill, SkillContext, GLOBAL_SKILL_REGISTRY
+from .base import Skill, SkillContext
+from .registry import GLOBAL_SKILL_REGISTRY
 from ..coding import CodeAgent
 
 class CodingSkill(Skill):

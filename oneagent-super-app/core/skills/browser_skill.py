@@ -1,6 +1,7 @@
 from __future__ import annotations
-from .base import Skill, SkillContext, GLOBAL_SKILL_REGISTRY
-from ..scraper import ScrapeOptions, GLOBAL_SCRAPER_REGISTRY
+from .base import Skill, SkillContext
+from .registry import GLOBAL_SKILL_REGISTRY
+from ..scraper import ScrapeOptions, GLOBAL_SCRAPER_REGISTRY, FetchEngine, PlaywrightEngine
 
 class BrowserSkill(Skill):
     name = "browser"
@@ -13,6 +14,8 @@ class BrowserSkill(Skill):
             screenshot=context.extra.get("screenshot", False),
             wait_for=context.extra.get("wait_for"),
         )
+        GLOBAL_SCRAPER_REGISTRY.register(FetchEngine())
+        GLOBAL_SCRAPER_REGISTRY.register(PlaywrightEngine())
         result = await GLOBAL_SCRAPER_REGISTRY.scrape(url, opts)
         return {
             "url": result.url,
