@@ -61,3 +61,4 @@ Thumbs.db
 # --- Lockfiles (keep package-lock, ignore bun) ---
 bun.lock
 bun.lockb
+"*.hex" 

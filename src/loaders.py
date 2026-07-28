@@ -802,7 +802,7 @@ def load_frontiermath(spec, *, limit=None) -> list[dict]:
             "id": f"frontiermath-{i}",
             "question": r.get("question") or r.get("problem") or "",
             "gold": ans,
-            "gold_number": _extract_number(ans),
+            "gold_number": _parse_number(ans),
         })
     return _limit(iter(out), limit)
 

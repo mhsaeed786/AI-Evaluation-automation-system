@@ -1,4 +1,4 @@
-﻿"""Builtin evaluation engine.
+"""Builtin evaluation engine.
 
 Runs one benchmark for one model directly against Ollama Cloud, scoring every
 item and returning a :class:`~src.results.ResultRecord`. Per-item failures are
