@@ -52,20 +52,30 @@ $ErrorActionPreference = "Stop"
 Set-Location -Path (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
 function Find-Python {
-    foreach ($c in @("python", "py -3")) {
+    # Prefer the highest available Python 3 (3.14 > 3.13 > ... > 3.9).
+    # Dependencies (datasets, pandas, flask, ...) are installed under Python 3.14
+    # on this machine, so we bias toward that if present.
+    $candidates = @("py -3.14", "py -3.13", "py -3.12", "py -3.11", "py -3", "python")
+    $best = $null; $bestMajor = 0; $bestMinor = 0
+    foreach ($c in $candidates) {
         try {
             $ver = (Invoke-Expression "$c --version") 2>$null
             if ($LASTEXITCODE -eq 0 -and $ver -match "Python (\d+)\.(\d+)") {
                 $major = [int]$Matches[1]; $minor = [int]$Matches[2]
-                if ($major -ge 3 -and ($major -gt 3 -or $minor -ge 9)) {
-                    Write-Host "Using: $ver" -ForegroundColor Green
-                    return $c
+                if ($major -gt 3 -or ($major -eq 3 -and $minor -ge 9)) {
+                    if (-not $best -or $major -gt $bestMajor -or ($major -eq $bestMajor -and $minor -gt $bestMinor)) {
+                        $best = $c; $bestMajor = $major; $bestMinor = $minor
+                    }
                 }
             }
         } catch { }
     }
-    Write-Host "No Python 3.9+ found on PATH. Install Python from https://python.org" -ForegroundColor Red
-    exit 1
+    if (-not $best) {
+        Write-Host "No Python 3.9+ found on PATH. Install Python from https://python.org" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Using: Python $bestMajor.$bestMinor ($best)" -ForegroundColor Green
+    return $best
 }
 
 $py = Find-Python

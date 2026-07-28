@@ -66,17 +66,23 @@ def _format_mcq(item: dict, answer_letter: str | None = None) -> str:
         lines.append(f"{L}) {choice}")
     if answer_letter:
         lines.append(f"Answer: {answer_letter}")
+    else:
+        lines.append("Answer with the letter of the best choice.")
     return "\n".join(lines)
 
 
 def _parse_letter(text: str, letters: list[str]) -> str | None:
     """Extract an answer letter from a free-form (CoT) response."""
     t = text or ""
-    m = re.search(r"answer[:\s]*\(?([A-Za-z])\)?", t, re.IGNORECASE)
+    # Pattern 1: "Answer: X" or "answer is X" (most explicit)
+    m = re.search(r"answer(?:\s+is)?[:\s]*\(?([A-Za-z])\)?", t, re.IGNORECASE)
     if m and m.group(1).upper() in letters:
         return m.group(1).upper()
-    # Fallback: the last standalone letter in the text (CoT tends to conclude
-    # with the chosen letter).
+    # Pattern 2: "The answer is (X)" or "I choose X"
+    m = re.search(r"(?:the answer is|i choose|option)\s*\(?([A-Za-z])\)?", t, re.IGNORECASE)
+    if m and m.group(1).upper() in letters:
+        return m.group(1).upper()
+    # Pattern 3: last standalone letter in the text (CoT conclusion)
     found = re.findall(r"\b([A-Za-z])\b", t)
     for ch in reversed(found):
         if ch.upper() in letters:
@@ -92,6 +98,23 @@ def _mcq_messages(item: dict, shots: list[dict]) -> list[dict]:
     parts.append(_format_mcq(item))
     text = "\n\n".join(parts) + "\nAnswer:"
     return [{"role": "user", "content": text}]
+
+
+def _mcq_generate_messages(item: dict, shots: list[dict]) -> list[dict]:
+    """Messages for the generate-and-parse fallback path. Uses a system
+    message to force a letter answer, which reasoning models need."""
+    parts = []
+    for s in shots:
+        sletters = _letters(len(s["choices"]))
+        parts.append(_format_mcq(s, sletters[s["gold"]]))
+    parts.append(_format_mcq(item))
+    text = "\n\n".join(parts)
+    return [
+        {"role": "system", "content": "Answer the multiple-choice question. "
+         "Output ONLY the letter of the correct answer (e.g. A, B, C, or D). "
+         "Do not explain."},
+        {"role": "user", "content": text},
+    ]
 
 
 def score_mcq(client, model, item, *, shots, cot, temperature, max_tokens) -> dict:
@@ -120,8 +143,15 @@ def score_mcq(client, model, item, *, shots, cot, temperature, max_tokens) -> di
         return {"correct": pred == gold_letter, "predicted": pred, "method": "logprob"}
 
     # Endpoint gave no usable top_logprobs — fall back to generate + parse.
-    pred = client.answer_letter_generate(model=model, prompt_messages=msgs, letters=letters)
-    return {"correct": pred == gold_letter, "predicted": pred, "method": "generate_fallback"}
+    # Use a system message to force a letter answer (reasoning models need
+    # explicit instruction), and give enough tokens for CoT if the model
+    # insists on thinking before answering.
+    gen_msgs = _mcq_generate_messages(item, shots)
+    text = client.chat_text(model=model, messages=gen_msgs, temperature=temperature,
+                            max_tokens=max(max_tokens, 256))
+    pred = _parse_letter(text, letters)
+    return {"correct": pred == gold_letter, "predicted": pred,
+            "method": "generate_fallback", "raw": text[:200]}
 
 
 # ======================================================================

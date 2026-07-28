@@ -1,10 +1,8 @@
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
-*.pyo
+# =====================================================================
+#  Root .gitignore — covers the entire repo
+# =====================================================================
 
-# Environment / secrets
+# --- Secrets (NEVER commit) ---
 .env
 .env.local
 .env.production
@@ -12,23 +10,47 @@ __pycache__/
 *.pem
 *.p12
 
-# Build output
+# --- Local scratch / ad-hoc scripts (frequently contain credentials) ---
+/_tmp*
+/_probe*
+/_db*
+/_test*
+/_live*
+/scratch/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / TypeScript (oneagent-super-app) ---
+node_modules/
 dist/
 build/
 *.cjs
 *.js.map
-
-# AI Studio internal
 .aistudio/
 
-# SQLite databases (runtime data)
+# --- Eval system runtime data (regenerable, often large or sensitive) ---
+results/
+data/
+logs/
+reports/
+
+# --- SQLite databases ---
 *.db
 *.sqlite
 *.sqlite3
 *.sqlite-shm
 *.sqlite-wal
 
-# OS / IDE
+# --- OS / IDE ---
 .DS_Store
 Thumbs.db
 .vscode/
@@ -36,10 +58,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Lockfiles (keep package-lock, ignore bun)
+# --- Lockfiles (keep package-lock, ignore bun) ---
 bun.lock
 bun.lockb
-
-# Logs
-*.log
-logs/
+"*.hex" 

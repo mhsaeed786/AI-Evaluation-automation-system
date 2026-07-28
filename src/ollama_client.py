@@ -168,6 +168,10 @@ class OllamaCloudClient:
         choice = resp.choices[0]
         tlp = getattr(choice, "logprobs", None)
         content = tlp.content if tlp else None
+        # Reasoning models (e.g. deepseek-v4-flash) may consume the single
+        # max_tokens=1 budget on the reasoning trace, leaving content empty
+        # and logprobs None. Signal absent so the engine falls back to
+        # generate-and-parse with a larger token budget.
         if not content:
             return LetterScores(scores={}, present=False)
 
