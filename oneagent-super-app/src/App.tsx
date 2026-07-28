@@ -7,9 +7,6 @@ import { LLMGateway } from './components/LLMGateway';
 import { AgentRunner } from './components/AgentRunner';
 import { SpecialistEvolution } from './components/SpecialistEvolution';
 import { AgentArchitecture } from './components/AgentArchitecture';
-import { SkillRunner } from './components/SkillRunner';
-import { ScraperPanel } from './components/ScraperPanel';
-import { AgentHarnessPanel } from './components/AgentHarnessPanel';
 import { OpenSourceSuite } from './components/OpenSourceSuite';
 import { IntegrationsHub } from './components/IntegrationsHub';
 import { PortableTargets } from './components/PortableTargets';
@@ -350,9 +347,6 @@ export default function App() {
           {activeTab === 'specialist_evolution' && <SpecialistEvolution />}
 
           {activeTab === 'agent_architecture' && <AgentArchitecture />}
-        {activeTab === 'skill_runner' && <SkillRunner />}
-        {activeTab === 'scraper' && <ScraperPanel />}
-        {activeTab === 'agent_harness' && <AgentHarnessPanel />}
 
           {activeTab === 'opensource_suite' && <OpenSourceSuite />}
 
