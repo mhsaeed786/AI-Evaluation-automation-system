@@ -6,69 +6,151 @@
 <title>AI Evaluation Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-:root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--cyan:#58a6ff;--green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff}
-*{box-sizing:border-box}
-body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding:14px 24px;position:sticky;top:0;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);z-index:10}
-header h1{margin:0;font-size:1.35rem;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.meta{color:var(--muted);font-size:.8rem}
-button{background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.85rem;transition:border-color .15s}
-button:hover{border-color:var(--cyan)}
-button.primary{background:var(--cyan);color:#000;border:none;font-weight:600}
-button.primary:hover{opacity:.85}
-button.danger{border-color:var(--red);color:var(--red)}
-nav.tabs{display:flex;gap:0;padding:0 18px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto}
-nav.tabs button{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:11px 14px;color:var(--muted);white-space:nowrap;font-size:.88rem}
-nav.tabs button.active{color:var(--text);border-bottom-color:var(--cyan)}
-nav.tabs button:hover{color:var(--text)}
-main{padding:22px;max-width:1600px;margin:0 auto}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:13px}
-.card .label{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.card .value{font-size:1.45rem;font-weight:700;color:var(--cyan);margin-top:3px}
-.card .value.green{color:var(--green)}
-.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-input,select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.84rem}
-input[type=text]{min-width:220px;flex-grow:1}
-input[type=checkbox]{width:16px;height:16px;accent-color:var(--cyan)}
-.table-wrap{overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:8px;max-height:68vh}
-table{width:100%;border-collapse:collapse;font-size:.8rem}
-th,td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
-th{background:var(--panel2);color:var(--muted);text-align:left;position:sticky;top:0;cursor:pointer;user-select:none}
-th:first-child,td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
-tbody tr:hover td{background:rgba(88,166,255,.06)}
-.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-weight:600;font-size:.76rem}
-.s100{background:rgba(63,185,80,.18);color:var(--green);border:1px solid var(--green)}
-.hi{background:rgba(88,166,255,.15);color:var(--cyan);border:1px solid var(--cyan)}
-.mid{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid var(--yellow)}
-.lo{background:rgba(248,81,73,.15);color:var(--red);border:1px solid var(--red)}
-.na{color:var(--muted)}
-.delta-neg{color:var(--red)}.delta-pos{color:var(--green)}.delta-na{color:var(--muted)}
-.empty{padding:40px;text-align:center;color:var(--muted)}
-.empty code,.note code{background:var(--panel2);padding:2px 6px;border-radius:4px;color:var(--text)}
-.chart-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
-.note{background:rgba(210,153,34,.08);border:1px solid var(--yellow);color:var(--yellow);padding:10px 14px;border-radius:8px;font-size:.84rem;margin-bottom:14px}
-.tag{font-size:.7rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;margin-left:6px}
-.hidden{display:none}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;gap:10px}
-.section-title{font-size:1.1rem;font-weight:600;margin:0 0 10px;color:var(--text)}
-.subsection{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
-.provider-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-.provider-row:last-child{border-bottom:none}
-.provider-row .pname{font-weight:600;min-width:130px}
-.provider-row .ptype{font-size:.72rem;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
-.provider-row .pkey{font-size:.72rem;color:var(--green)}
-.provider-row .pnokey{font-size:.72rem;color:var(--red)}
-.bench-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
-.bench-chip{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;font-size:.8rem;cursor:pointer}
-.bench-chip:hover{border-color:var(--cyan)}
-.bench-chip.disabled{opacity:.4}
-.bench-chip .bkind{font-size:.66rem;color:var(--muted)}
-.compare-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.dl-buttons{display:flex;gap:8px;flex-wrap:wrap}
-.dl-buttons button{display:flex;align-items:center;gap:6px}
-.industry-table th{cursor:default}
+:root {
+  --bg: #09090b; --panel: #18181b; --panel2: #27272a; --border: #3f3f46;
+  --text: #e4e4e7; --muted: #a1a1aa;
+  --primary: #3b82f6; --primary-hover: #2563eb;
+  --green: #10b981; --yellow: #f59e0b; --red: #ef4444; --purple: #8b5cf6;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border); padding: 16px 32px;
+  position: sticky; top: 0; background: rgba(9,9,11,0.85);
+  backdrop-filter: blur(12px); z-index: 50;
+}
+header h1 {
+  margin: 0; font-size: 1.5rem; font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.meta { color: var(--muted); font-size: 0.85rem; font-weight: 500; }
+button {
+  background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.875rem;
+  font-weight: 500; transition: all 0.2s ease;
+}
+button:hover { background: #3f3f46; border-color: #52525b; }
+button.primary { background: var(--primary); color: #fff; border: none; }
+button.primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+button.danger { border-color: var(--red); color: var(--red); background: transparent; }
+button.danger:hover { background: rgba(239, 68, 68, 0.1); }
+nav.tabs {
+  display: flex; gap: 8px; padding: 0 32px; border-bottom: 1px solid var(--border);
+  background: var(--panel); overflow-x: auto;
+}
+nav.tabs button {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  border-radius: 0; padding: 14px 16px; color: var(--muted); white-space: nowrap;
+  font-size: 0.9rem; transition: color 0.2s;
+}
+nav.tabs button.active { color: var(--text); border-bottom-color: var(--primary); font-weight: 600; }
+nav.tabs button:hover { color: var(--text); }
+main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: transform 0.2s;
+}
+.card:hover { transform: translateY(-2px); border-color: #52525b; }
+.card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+.card .value { font-size: 1.75rem; font-weight: 700; color: var(--text); margin-top: 8px; }
+.card .value.green { color: var(--green); }
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+input, select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 14px; border-radius: 8px; font-size: 0.875rem; transition: border-color 0.2s;
+}
+input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+input[type=text] { min-width: 260px; flex-grow: 1; }
+input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.table-wrap {
+  overflow: auto; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; max-height: 70vh; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th, td { padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { background: var(--panel2); color: var(--muted); text-align: left; position: sticky; top: 0; cursor: pointer; font-weight: 600; }
+th:first-child, td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; font-weight: 500; }
+tbody tr { transition: background-color 0.15s; }
+tbody tr:hover td { background: rgba(59, 130, 246, 0.05); }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 12px; font-weight: 600; font-size: 0.75rem; text-align: center; }
+.s100 { background: rgba(16, 185, 129, 0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+.hi { background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid rgba(59,130,246,0.2); }
+.mid { background: rgba(245, 158, 11, 0.1); color: var(--yellow); border: 1px solid rgba(245,158,11,0.2); }
+.lo { background: rgba(239, 68, 68, 0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.na { color: var(--muted); font-style: italic; }
+.delta-neg { color: var(--red); font-weight: 500; }
+.delta-pos { color: var(--green); font-weight: 500; }
+.delta-na { color: var(--muted); }
+.empty { padding: 60px; text-align: center; color: var(--muted); font-size: 1.1rem; }
+.empty code, .note code { background: var(--panel2); padding: 2px 6px; border-radius: 6px; color: var(--text); font-family: monospace; }
+.note {
+  background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--yellow); padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 20px;
+}
+.tag { font-size: 0.7rem; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; margin-left: 8px; }
+.hidden { display: none; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 12px; }
+.section-title { font-size: 1.25rem; font-weight: 600; margin: 0 0 16px; color: var(--text); }
+.subsection {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+.provider-row {
+  display: flex; flex-wrap: wrap; gap: 16px; padding: 16px;
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: 12px; align-items: center; transition: border-color 0.2s;
+}
+.provider-row:hover { border-color: #52525b; }
+.provider-row .pname { font-weight: 600; font-size: 1.1rem; min-width: 140px; display: flex; align-items: center; gap: 8px; }
+.provider-row .ptype { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: var(--bg); }
+.provider-row .pkey { font-size: 0.75rem; color: var(--green); background: rgba(16,185,129,0.1); padding: 2px 8px; border-radius: 6px; }
+.provider-row .pnokey { font-size: 0.75rem; color: var(--red); background: rgba(239,68,68,0.1); padding: 2px 8px; border-radius: 6px; }
+.provider-inputs { display: flex; flex-wrap: wrap; gap: 12px; flex-grow: 1; align-items: center; }
+.provider-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); flex: 1; min-width: 200px; }
+.bench-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.bench-chip {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+  font-size: 0.875rem; cursor: pointer; transition: all 0.2s;
+}
+.bench-chip:hover { border-color: var(--primary); background: rgba(59,130,246,0.05); }
+.bench-chip.disabled { opacity: 0.5; background: var(--bg); }
+.bench-chip .bkind { font-size: 0.7rem; color: var(--muted); margin-left: auto; background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+.compare-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; background: var(--panel); padding: 16px; border-radius: 12px; border: 1px solid var(--border); }
+.dl-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+.dl-buttons button { display: flex; align-items: center; gap: 8px; }
+.industry-table th { cursor: default; }
+
+/* Modal Styles */
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-backdrop.show { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; width: 100%; max-width: 480px;
+  transform: translateY(20px); transition: transform 0.2s;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+}
+.modal-backdrop.show .modal { transform: translateY(0); }
+.modal-header { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+.modal-close { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1; }
+.modal-close:hover { color: var(--text); background: none; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 0.875rem; color: var(--muted); }
+.form-group input, .form-group select { width: 100%; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
 </style>
 </head>
 <body>
@@ -79,18 +161,18 @@ tbody tr:hover td{background:rgba(88,166,255,.06)}
   </div>
   <div class="row">
     <span class="meta" id="updated"></span>
-    <button onclick="loadAll()">&#8635; Refresh</button>
+    <button onclick="window.loadAll()">&#8635; Refresh</button>
   </div>
 </header>
 <nav class="tabs">
-  <button class="active" onclick="show('overview',this)">Overview</button>
-  <button onclick="show('matrix',this)">Measured Matrix</button>
-  <button onclick="show('deltas',this)">Measured vs Advertised</button>
-  <button onclick="show('providers',this)">By Provider</button>
-  <button onclick="show('compare',this)">Model Compare</button>
-  <button onclick="show('settings',this)">Settings</button>
-  <button onclick="show('reports',this)">Reports</button>
-  <button onclick="show('run',this)">&#9654; Run</button>
+  <button class="active" onclick="window.showTab('overview',this)">Overview</button>
+  <button onclick="window.showTab('matrix',this)">Measured Matrix</button>
+  <button onclick="window.showTab('deltas',this)">Measured vs Advertised</button>
+  <button onclick="window.showTab('providers',this)">By Provider</button>
+  <button onclick="window.showTab('compare',this)">Model Compare</button>
+  <button onclick="window.showTab('settings',this)">Settings</button>
+  <button onclick="window.showTab('reports',this)">Reports</button>
+  <button onclick="window.showTab('run',this)">&#9654; Run</button>
 </nav>
 <main>
   <section id="tab-overview"></section>
@@ -110,7 +192,7 @@ const $=id=>document.getElementById(id);
 async function get(p){const r=await fetch(p);if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json();}
 function emptyNote(){return '<div class="empty">No results yet. Run <code>python -m src.runner --provider all --benchmarks all --quick</code> (or use the <b>&#9654; Run</b> tab) then click Refresh.</div>';}
 
-async function loadAll(){
+window.loadAll = async function(){
   try{
     const[ov,mx,dl,pv,rn,cfg]=await Promise.all([
       get('/api/overview'),get('/api/matrix'),get('/api/deltas'),
@@ -119,9 +201,11 @@ async function loadAll(){
     $('meta').textContent='Endpoint '+cfg.base_url+'  \u00b7  '+cfg.providers.length+' providers configured';
     $('updated').textContent='Updated '+new Date().toLocaleTimeString();
     renderOverview();renderMatrix();renderDeltas();renderProviders();renderRuns();renderRun();
+    window.renderSettings();
+
   }catch(e){$('tab-overview').innerHTML='<div class="empty">Failed to load: '+e+' \u2014 is the server running? (<code>python -m src.server</code>)</div>';}
 }
-function show(id,btn){
+window.showTab = function(id, btn){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
@@ -191,7 +275,7 @@ function renderDeltasTable(){
   if(deltaOnlyAdv)rows=rows.filter(r=>r.advertised!=null);
   const k=deltaSort.k,dir=deltaSort.dir;
   rows.sort((a,b)=>{const av=a[k],bv=b[k];if(av==null&&bv==null)return 0;if(av==null)return 1;if(bv==null)return -1;return (av<bv?-1:av>bv?1:0)*dir;});
-  const th=(kk,lb)=>'<th onclick="deltaSort={k:\''+kk+'\',dir:(deltaSort.k==\''+kk+'\'?-deltaSort.dir:1)};renderDeltasTable()">'+lb+(deltaSort.k===kk?(deltaSort.dir>0?' \u25B2':' \u25BC':'')+'</th>';
+  const th=(kk,lb)=>'<th onclick="deltaSort={k:\''+kk+'\',dir:(deltaSort.k==\''+kk+'\'?-deltaSort.dir:1)};renderDeltasTable()">'+lb+(deltaSort.k===kk?(deltaSort.dir>0?' \u25B2':' \u25BC'):'')+'</th>';
   let h='<thead><tr>'+th('model','Model')+th('provider','Provider')+th('benchmark','Benchmark')+th('measured','Measured')+th('advertised','Advertised')+th('delta','\u0394')+'</tr></thead><tbody>';
   for(const r of rows){
     const dc=r.delta==null?'delta-na':(r.delta<0?'delta-neg':'delta-pos');
@@ -274,6 +358,8 @@ function renderRuns(){
 
 /* ===== Settings ===== */
 let settingsData=null;
+let customProvidersToAdd = {};
+
 async function loadSettings(){
   if(settingsData){renderSettings();return;}
   try{
@@ -281,17 +367,69 @@ async function loadSettings(){
     renderSettings();
   }catch(e){$('tab-settings').innerHTML='<div class="empty">Failed to load settings: '+e+'</div>';}
 }
-function renderSettings(){
+
+function openModal() { document.getElementById('addProviderModal').classList.add('show'); }
+function closeModal() { document.getElementById('addProviderModal').classList.remove('show'); }
+
+function addCustomProvider() {
+  const name = $('cpName').value.trim().toLowerCase();
+  const type = $('cpType').value;
+  const url = $('cpUrl').value.trim();
+  const keyVar = $('cpKeyVar').value.trim() || (name.toUpperCase() + '_API_KEY');
+  const keyValue = $('cpKeyValue').value.trim();
+
+  if (!name || !url) { alert('Name and Base URL are required.'); return; }
+  if (settingsData.providers.some(p => p.name === name)) { alert('Provider already exists.'); return; }
+
+  const newProv = {
+    name: name,
+    api_type: type,
+    url_env: name.toUpperCase() + '_BASE_URL',
+    key_env: keyVar,
+    url: url,
+    has_key: !!keyValue,
+    models: 'auto',
+    is_custom: true,
+    _new_key_val: keyValue
+  };
+
+  settingsData.providers.push(newProv);
+  customProvidersToAdd[name] = [type, newProv.url_env, newProv.key_env, url];
+
+  closeModal();
+  renderSettings();
+}
+
+window.renderSettings = function(){
   const s=settingsData;
+  if(!s || !s.providers) return;
   let html='';
+
   // Providers
-  html+='<div class="subsection"><div class="section-title">Providers</div>';
+  html+='<div class="subsection">';
+  html+='<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
+  html+='<div class="section-title" style="margin:0;">Providers</div>';
+  html+='<button class="primary" onclick="openModal()">+ Add Custom Provider</button>';
+  html+='</div>';
+
   html+='<div class="note">Paid tiers (ollama, qwen, glm) use all models. Free tiers use curated free/text models only. Edit model lists below (comma-separated, or <code>auto</code> for paid).</div>';
+
   for(const p of s.providers){
     const models=Array.isArray(p.models)?p.models.join(', '):(p.models||'auto');
-    html+='<div class="provider-row"><span class="pname">'+p.name+'</span><span class="ptype">'+p.api_type+'</span>'+(p.has_key?'<span class="pkey">key set</span>':'<span class="pnokey">no key</span>')+'<input type="text" id="pm_'+p.name+'" value="'+models+'" style="flex-grow:1;font-size:.78rem"></div>';
+    const customTag = p.is_custom ? '<span class="tag" style="color:var(--primary);border-color:var(--primary)">Custom</span>' : '';
+    html+='<div class="provider-row">';
+    html+='  <div class="pname">' + p.name + customTag + '</div>';
+    html+='  <div class="provider-inputs">';
+    html+='    <label>API Type<span class="ptype">'+p.api_type+'</span></label>';
+    html+='    <label>Status'+(p.has_key?'<span class="pkey">Key Set</span>':'<span class="pnokey">No Key</span>')+'</label>';
+    html+='    <label>Models<input type="text" id="pm_'+p.name+'" value="'+models+'"></label>';
+    html+='    <label>Base URL<input type="text" id="purl_'+p.name+'" value="'+(p.url||'')+'" placeholder="default"></label>';
+    html+='    <label>API Key<input type="password" id="pkey_'+p.name+'" placeholder="'+(p.has_key?'••••••••':'Enter key to set/update')+'"></label>';
+    html+='  </div>';
+    html+='</div>';
   }
   html+='</div>';
+
   // Benchmarks
   html+='<div class="subsection"><div class="section-title">Benchmarks</div>';
   html+='<div class="note">Uncheck benchmarks to skip them. Disabled benchmarks are saved to benchmarks.yaml.</div>';
@@ -300,30 +438,87 @@ function renderSettings(){
     html+='<div class="bench-chip'+(b.enabled?'':' disabled')+'" onclick="this.classList.toggle(\'disabled\')"><input type="checkbox" id="bench_'+b.name+'" '+(b.enabled?'checked':'')+'><span>'+b.name+'</span><span class="bkind">'+b.kind+'</span></div>';
   }
   html+='</div></div>';
+
   // Sampling
   html+='<div class="subsection"><div class="section-title">Sampling Defaults</div>';
-  html+='<div class="row"><label>Seed: <input type="number" id="s_seed" value="'+s.sampling.seed+'" style="width:80px"></label><label>Temperature: <input type="number" id="s_temp" value="'+s.sampling.temperature+'" step="0.1" style="width:80px"></label><label>Timeout: <input type="number" id="s_timeout" value="'+s.sampling.timeout+'" style="width:80px">s</label></div>';
-  html+='</div>';
+  html+='<div class="row">';
+  html+='<label class="col" style="gap:4px; font-size:0.875rem;">Seed <input type="number" id="s_seed" value="'+s.sampling.seed+'" style="width:100px"></label>';
+  html+='<label class="col" style="gap:4px; font-size:0.875rem;">Temperature <input type="number" id="s_temp" value="'+s.sampling.temperature+'" step="0.1" style="width:100px"></label>';
+  html+='<label class="col" style="gap:4px; font-size:0.875rem;">Timeout (s) <input type="number" id="s_timeout" value="'+s.sampling.timeout+'" style="width:100px"></label>';
+  html+='</div></div>';
+
   // Save
-  html+='<button class="primary" onclick="saveSettings()">Save Settings</button> <span class="meta" id="saveStatus"></span>';
+  html+='<div style="display:flex; gap:16px; align-items:center;">';
+  html+='<button class="primary" style="padding:12px 24px; font-size:1rem;" onclick="saveSettings()">Save Settings</button>';
+  html+='<span class="meta" id="saveStatus"></span>';
+  html+='</div>';
+
   $('tab-settings').innerHTML=html;
 }
+
 async function saveSettings(){
   const s=settingsData;
+  if(!s || !s.providers) return;
   const pm={};
-  for(const p of s.providers){const v=$('pm_'+p.name).value.trim();pm[p.name]=v==='auto'?'auto':v.split(',').map(x=>x.trim()).filter(Boolean);}
+  const envUpdates={};
+  const customProvsToAdd={};
+
+  for(const p of s.providers){
+    const v=$('pm_'+p.name).value.trim();
+    pm[p.name]=v==='auto'?'auto':v.split(',').map(x=>x.trim()).filter(Boolean);
+
+    // Check for url/key updates
+    const urlVal = $('purl_'+p.name).value.trim();
+    const keyVal = $('pkey_'+p.name).value.trim();
+
+    if (p.is_custom) {
+       // if it's already in customProvidersToAdd (brand new)
+       if (customProvidersToAdd[p.name]) {
+           customProvsToAdd[p.name] = customProvidersToAdd[p.name];
+           // override with current inputs in case user changed them before saving
+           if (urlVal) { customProvsToAdd[p.name][3] = urlVal; envUpdates[p.url_env] = urlVal; }
+           // get the key we stored when adding, or the new one if typed
+           const k = keyVal || p._new_key_val;
+           if (k) envUpdates[p.key_env] = k;
+       } else {
+           // existing custom provider being updated
+           customProvsToAdd[p.name] = [p.api_type, p.url_env, p.key_env, urlVal || p.url];
+           if (urlVal && urlVal !== p.url) { envUpdates[p.url_env] = urlVal; }
+           if (keyVal) { envUpdates[p.key_env] = keyVal; }
+       }
+    } else {
+       if (urlVal && urlVal !== p.url) { envUpdates[p.url_env] = urlVal; }
+       if (keyVal) { envUpdates[p.key_env] = keyVal; }
+    }
+  }
+
   const disabled=[];
   for(const b of s.benchmarks){if(!$('bench_'+b.name).checked)disabled.push(b.name);}
   const sampling={seed:parseInt($('s_seed').value)||1234,temperature:parseFloat($('s_temp').value)||0.0,timeout:parseInt($('s_timeout').value)||120};
+
   $('saveStatus').textContent='saving...';
   try{
-    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider_models:pm,disabled_benchmarks:disabled,sampling})});
+    const payload = {
+       provider_models: pm,
+       disabled_benchmarks: disabled,
+       sampling: sampling,
+       env_updates: envUpdates,
+       custom_providers: Object.keys(customProvsToAdd).length > 0 ? customProvsToAdd : null
+    };
+
+    const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const j=await r.json();
     $('saveStatus').textContent='Saved: '+(j.saved||[]).join(', ');
+
+    // clear memory of newly added ones
+    customProvidersToAdd = {};
+
     settingsData=null; // force reload on next visit
+
+    // Refresh to show masked keys
+    setTimeout(loadSettings, 1000);
   }catch(e){$('saveStatus').textContent='Error: '+e;}
 }
-
 /* ===== Reports ===== */
 let industryData=null;
 async function loadReports(){
@@ -385,11 +580,49 @@ async function startRun(){
   try{const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     $('runStatus').textContent=j.ok?j.message:('error: '+(j.error||r.status));
-    if(j.ok)setTimeout(loadAll,15000);
+    if(j.ok)setTimeout(window.loadAll,15000);
   }catch(e){$('runStatus').textContent='failed: '+e;}
 }
 
-loadAll();
+window.loadAll();
 </script>
+
+<div id="addProviderModal" class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-header">
+      Add Custom Provider
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-group">
+      <label>Provider Name</label>
+      <input type="text" id="cpName" placeholder="e.g. my-custom-openai">
+    </div>
+    <div class="form-group">
+      <label>API Type</label>
+      <select id="cpType">
+        <option value="openai">OpenAI-compatible</option>
+        <option value="anthropic">Anthropic Messages</option>
+        <option value="gemini">Google Gemini</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Base URL</label>
+      <input type="text" id="cpUrl" placeholder="https://api.example.com/v1">
+    </div>
+    <div class="form-group">
+      <label>API Key Variable Name</label>
+      <input type="text" id="cpKeyVar" placeholder="MY_CUSTOM_API_KEY">
+    </div>
+    <div class="form-group">
+      <label>API Key Value</label>
+      <input type="text" id="cpKeyValue" placeholder="sk-...">
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="addCustomProvider()">Add Provider</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

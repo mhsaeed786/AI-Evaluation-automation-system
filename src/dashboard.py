@@ -173,15 +173,17 @@ def settings_view(cfg: Config) -> dict:
     for name, (api_type, url_var, key_var, default_url) in PROVIDERS.items():
         url, key = "", ""
         try:
-            from .config import get_provider_credentials
+            from .config import get_provider_credentials, DEFAULT_PROVIDERS
             url, key = get_provider_credentials(name)
+            is_custom = name not in DEFAULT_PROVIDERS
         except Exception:
-            pass
+            is_custom = False
         providers_info.append({
             "name": name, "api_type": api_type,
             "url_env": url_var, "key_env": key_var,
             "url": url, "has_key": bool(key),
             "models": pm.get(name, []),
+            "is_custom": is_custom,
         })
     benchmarks = []
     for bname, bspec in cfg.benchmarks.get("benchmarks", {}).items():
@@ -209,8 +211,47 @@ def _disabled_benchmarks(cfg: Config) -> set:
 
 
 def save_settings(cfg: Config, body: dict) -> dict:
-    """Save settings from the UI. Writes providers.yaml + benchmarks.yaml disabled list."""
+    """Save settings from the UI. Writes providers.yaml, custom_providers.yaml, .env, and benchmarks.yaml disabled list."""
     saved = []
+
+    # 0) Save custom providers and their URLs/Keys
+    custom_providers = body.get("custom_providers", {})
+    if custom_providers is not None:
+        path = CONFIG_DIR / "custom_providers.yaml"
+        existing = {}
+        if path.exists():
+            existing = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        existing["providers"] = custom_providers
+        path.write_text(yaml.safe_dump(existing, sort_keys=False, allow_unicode=True, width=10000),
+                        encoding="utf-8")
+        saved.append("custom_providers.yaml")
+
+    env_updates = body.get("env_updates", {})
+    if env_updates:
+        env_path = cfg.project_root / ".env"
+        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        out = []
+        seen = {k: False for k in env_updates.keys()}
+        for line in lines:
+            updated = False
+            for k, v in env_updates.items():
+                if line.startswith(f"{k}="):
+                    if v is not None:
+                        out.append(f"{k}={v}")
+                    updated = True
+                    seen[k] = True
+                    break
+            if not updated:
+                out.append(line)
+        for k, v in env_updates.items():
+            if not seen[k] and v is not None:
+                out.append(f"{k}={v}")
+        env_path.write_text('
+'.join(out) + '
+', encoding="utf-8")
+        saved.append(".env (keys/urls)")
+
+    # 1) Save per-provider model lists
     # 1) Save per-provider model lists
     pm = body.get("provider_models", {})
     if pm:

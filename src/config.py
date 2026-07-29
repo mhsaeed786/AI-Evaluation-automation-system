@@ -143,7 +143,7 @@ def load_config(env_path: Path | None = None, *, require_key: bool = True) -> Co
 #                  Google Gemini via its /v1beta/openai compat URL).
 #   "anthropic" -> Anthropic Messages API (anthropic SDK, optional).
 #   "gemini"    -> Google Gemini native API (google-genai SDK, optional).
-PROVIDERS = {
+DEFAULT_PROVIDERS = {
     "openai":     ("openai",    "OPENAI_BASE_URL",     "OPENAI_API_KEY",     "https://api.openai.com/v1"),
     "ollama":     ("openai",    "OLLAMA_BASE_URL",     "OLLAMA_API_KEY",     "https://api.ollama.com/v1"),
     "qwen":       ("openai",    "QWEN_BASE_URL",       "QWEN_API_KEY",       "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"),
@@ -165,6 +165,15 @@ PROVIDERS = {
     "gemini":     ("openai",    "GEMINI_BASE_URL",     "GEMINI_API_KEY",     "https://generativelanguage.googleapis.com/v1beta/openai"),
     "anthropic":  ("anthropic", "ANTHROPIC_BASE_URL",  "ANTHROPIC_API_KEY",  "https://api.anthropic.com"),
 }
+
+PROVIDERS = dict(DEFAULT_PROVIDERS)
+try:
+    _custom = _load_yaml(CONFIG_DIR / "custom_providers.yaml").get("providers", {})
+    for k, v in _custom.items():
+        if isinstance(v, list) and len(v) >= 4:
+            PROVIDERS[k] = (v[0], v[1], v[2], v[3])
+except Exception:
+    pass
 
 
 def provider_api_type(provider_name: str) -> str:
