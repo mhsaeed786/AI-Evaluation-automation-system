@@ -1,0 +1,14 @@
+name: gap-analysis
+description: Analyze Azure DevOps work items for coverage gaps against FHIR requirements
+version: "1.0"
+author: OneAgent
+category: healthcare
+tools:
+  - query_devops
+  - fhir_search
+  - read_excel
+parameters:
+  project:
+    type: string
+    description: Azure DevOps project
+    default: HealthOS10g

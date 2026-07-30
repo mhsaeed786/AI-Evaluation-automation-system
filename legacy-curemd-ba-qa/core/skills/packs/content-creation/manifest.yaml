@@ -1,0 +1,17 @@
+name: content-creation
+description: Multi-platform content generation for blogs, documentation, and social media
+version: "1.0"
+author: OneAgent
+category: productivity
+tools:
+  - web_search
+  - seo_analyze
+  - generate_text
+parameters:
+  topic:
+    type: string
+    description: Content topic
+  platform:
+    type: string
+    description: Target platform (blog, linkedin, twitter, docs)
+    default: blog

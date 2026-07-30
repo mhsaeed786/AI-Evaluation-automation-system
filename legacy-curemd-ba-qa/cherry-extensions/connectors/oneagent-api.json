@@ -1,0 +1,18 @@
+{
+  "name": "oneagent-api",
+  "type": "openapi",
+  "description": "OneAgent API connector for Cherry Studio",
+  "config": {
+    "base_url": "http://localhost:8000",
+    "endpoints": [
+      {"method": "GET", "path": "/modules", "description": "List available modules"},
+      {"method": "GET", "path": "/llm/providers", "description": "List LLM providers"},
+      {"method": "GET", "path": "/llm/budget", "description": "Get budget summary"},
+      {"method": "POST", "path": "/llm/complete", "description": "Complete an LLM call"},
+      {"method": "POST", "path": "/agent/run", "description": "Run an agent task"},
+      {"method": "GET", "path": "/skills", "description": "List skill packs"},
+      {"method": "GET", "path": "/scheduler/jobs", "description": "List scheduled jobs"},
+      {"method": "POST", "path": "/meta/generate", "description": "Generate a new module"}
+    ]
+  }
+}

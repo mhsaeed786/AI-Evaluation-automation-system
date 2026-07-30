@@ -1,0 +1,15 @@
+{
+  "name": "HealthOS-fhir-server",
+  "type": "mcp-server",
+  "description": "HealthOS FHIR R4 server connector for resource operations",
+  "config": {
+    "base_url": "https://fhir.HealthOS.com/fhir/R4",
+    "version": "R4",
+    "auth": {
+      "type": "oauth2",
+      "token_endpoint": "/auth/token",
+      "smart_launch": true
+    },
+    "operations": ["read", "search", "create", "update", "delete", "validate", "capabilities"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "HealthOS-sharepoint",
+  "type": "mcp-server",
+  "description": "HealthOS SharePoint connector for file operations",
+  "config": {
+    "site_url": "https://HealthOSinc.sharepoint.com/sites/ApplicationImprovementsTeam/",
+    "auth": {
+      "type": "browser",
+      "username": "hassan.saeed@HealthOS.com"
+    },
+    "lists": [
+      "FHIR Sync Status",
+      "FHIR Mapping Status"
+    ],
+    "operations": ["list_items", "download_attachments", "upload_files", "read_list"]
+  }
+}

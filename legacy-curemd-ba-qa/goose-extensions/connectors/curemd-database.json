@@ -1,0 +1,34 @@
+{
+  "name": "HealthOS-database",
+  "type": "mcp-server",
+  "description": "HealthOS database connector for SQL Server operations",
+  "config": {
+    "connections": [
+      {
+        "name": "10g-fhir",
+        "server": "Release01",
+        "database": "FHIR_HealthOS",
+        "username": "HealthOS",
+        "password": "REDACTED-CREDENTIAL",
+        "driver": "ODBC Driver 17 for SQL Server"
+      },
+      {
+        "name": "10g-muii",
+        "server": "Release01",
+        "database": "MUII_HEALTHOS",
+        "username": "HealthOS",
+        "password": "REDACTED-CREDENTIAL",
+        "driver": "ODBC Driver 17 for SQL Server"
+      },
+      {
+        "name": "11x-muii",
+        "server": "baseline11x_HealthOS",
+        "database": "MUII_HEALTHOS",
+        "username": "HealthOS",
+        "password": "REDACTED-CREDENTIAL",
+        "driver": "ODBC Driver 17 for SQL Server"
+      }
+    ],
+    "operations": ["query", "execute", "describe_table", "list_tables", "get_schema"]
+  }
+}

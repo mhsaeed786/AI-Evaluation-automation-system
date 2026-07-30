@@ -1,0 +1,18 @@
+name: trigger-testing
+description: Test database triggers for FHIR RecordQueue population with automated INSERT/UPDATE/DELETE verification
+version: "1.0"
+author: OneAgent
+category: healthcare
+tools:
+  - query_database
+  - execute_non_query
+  - check_record_queue
+  - read_trigger_definitions
+parameters:
+  db_environment:
+    type: string
+    description: Database environment (release01_fhir, baseline11x_fhir)
+    default: release01_fhir
+  trigger_folder:
+    type: string
+    description: Path to trigger definition files

@@ -1,0 +1,37 @@
+# =====================================================================
+#  Ollama Cloud Evaluation System — dependencies
+# =====================================================================
+#
+# The system has TWO tiers. Install only what you need:
+#
+#   pip install -r requirements.txt          # Tier 1 (builtin engine)  — always
+#   pip install -r requirements-harness.txt  # Tier 2 (lm-eval/EvalPlus) — optional
+#
+# Tier 1 has NO heavy ML dependencies (no torch/numba) and installs cleanly
+# on Python 3.11 through 3.14, including the user's Python 3.14.6.
+# Tier 2 wheels may lag on Python 3.14; use Python 3.11 or 3.12 for it.
+# =====================================================================
+
+# --- HTTP / OpenAI-compatible client ---------------------------------
+openai>=1.51.0
+requests>=2.32.3
+tenacity>=9.0.0
+
+# --- Config & UX -----------------------------------------------------
+python-dotenv>=1.0.1
+PyYAML>=6.0.2
+tqdm>=4.66.5
+rich>=13.9.0
+
+# --- Results & reporting ---------------------------------------------
+pandas>=2.2.3
+tabulate>=0.9.0
+Jinja2>=3.1.4
+
+# --- Web UI (local dashboard) ---------------------------------------
+# Lightweight, pure-Python; serves the dashboard at http://127.0.0.1:5000.
+flask>=3.0.0
+
+# --- Benchmark datasets (Hugging Face datasets hub) ------------------
+# Pure-Python data loader; works on Python 3.11–3.14.
+datasets>=3.1.0

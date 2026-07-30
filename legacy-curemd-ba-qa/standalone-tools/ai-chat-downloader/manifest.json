@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "AI Chat Downloader",
+  "version": "1.0.0",
+  "description": "Download all chats from Gemini, ChatGPT, DeepSeek, ZAI, Grok, Perplexity and more",
+  "permissions": ["activeTab", "downloads", "storage", "scripting"],
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://chat.deepseek.com/*",
+    "https://chat.zai.com/*",
+    "https://grok.x.ai/*",
+    "https://www.perplexity.ai/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*",
+        "https://gemini.google.com/*",
+        "https://chat.deepseek.com/*",
+        "https://chat.zai.com/*",
+        "https://grok.x.ai/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

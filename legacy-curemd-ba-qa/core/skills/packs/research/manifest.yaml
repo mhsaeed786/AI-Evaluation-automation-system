@@ -1,0 +1,18 @@
+name: research
+description: Deep research with multi-source analysis, web search, and document synthesis
+version: "1.0"
+author: OneAgent
+category: productivity
+tools:
+  - web_search
+  - web_scrape
+  - read_document
+  - summarize_text
+parameters:
+  topic:
+    type: string
+    description: Research topic or question
+  depth:
+    type: string
+    description: Research depth (quick, standard, deep)
+    default: standard

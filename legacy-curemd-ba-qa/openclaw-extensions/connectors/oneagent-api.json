@@ -1,0 +1,16 @@
+{
+  "name": "oneagent-api",
+  "type": "openapi",
+  "description": "OneAgent API connector for OpenClaw",
+  "config": {
+    "base_url": "http://localhost:8000",
+    "auth": {"type": "api_key", "header": "X-API-Key"},
+    "endpoints": [
+      {"method": "POST", "path": "/agent/run", "description": "Run an agent task", "schema": {"task": "string", "module": "string", "task_class": "string"}},
+      {"method": "GET", "path": "/modules", "description": "List modules"},
+      {"method": "POST", "path": "/llm/complete", "description": "LLM completion"},
+      {"method": "GET", "path": "/scheduler/jobs", "description": "List scheduled jobs"},
+      {"method": "POST", "path": "/scheduler/fire-event", "description": "Fire an event"}
+    ]
+  }
+}
