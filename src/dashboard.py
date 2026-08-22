@@ -246,9 +246,7 @@ def save_settings(cfg: Config, body: dict) -> dict:
         for k, v in env_updates.items():
             if not seen[k] and v is not None:
                 out.append(f"{k}={v}")
-        env_path.write_text('
-'.join(out) + '
-', encoding="utf-8")
+        env_path.write_text("\n".join(out) + "\n", encoding="utf-8")
         saved.append(".env (keys/urls)")
 
     # 1) Save per-provider model lists

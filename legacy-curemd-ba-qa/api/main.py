@@ -71,7 +71,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "timestamp": time.time()}
+    return {"status": "healthy", "version": "1.0.0", "timestamp": time.time()}
 
 
 # ── Module Discovery ────────────────────────────────────────────────

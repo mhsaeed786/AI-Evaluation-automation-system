@@ -9,8 +9,6 @@ import {
   Play,
   Cpu,
   Layers,
-  CheckCircle2,
-  AlertTriangle,
   FileCode2,
   Terminal,
   Bot
@@ -24,6 +22,7 @@ interface DashboardProps {
   mcps: MCPConnector[];
   onNavigate: (tab: string) => void;
   onQuickRun: (task: string, module: string) => void;
+  telemetryStatus: 'loading' | 'unavailable';
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -33,6 +32,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   mcps,
   onNavigate,
   onQuickRun,
+  telemetryStatus,
 }) => {
   const quickActions = [
     {
@@ -101,66 +101,115 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Row — max 3 cards, each with trend context, loading skeleton,
+          and honest empty states (no fabricated zeros). */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* KPI 1: Daily LLM Budget */}
         <div className="bg-[#0a0a0a] p-4 rounded-xl border border-white/10 space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span className="uppercase tracking-wider font-mono text-[10px]">Daily LLM Budget</span>
             <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-xl font-bold text-slate-100 font-mono">
-            ${budgetStats.currentSpendUSD.toFixed(3)}{' '}
-            <span className="text-xs font-normal text-slate-500">/ ${budgetStats.dailyCapUSD.toFixed(2)}</span>
-          </div>
-          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-            <div
-              className="bg-amber-400 h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, (budgetStats.currentSpendUSD / budgetStats.dailyCapUSD) * 100)}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-slate-400 flex justify-between font-mono">
-            <span>{budgetStats.totalRequestsToday} LLM calls</span>
-            <span className="text-emerald-400">{budgetStats.cachedHitsToday} cached ($0)</span>
-          </p>
+          {telemetryStatus === 'loading' ? (
+            <div className="space-y-2 animate-pulse" aria-busy="true" aria-label="Loading budget telemetry">
+              <div className="h-6 w-28 bg-white/10 rounded" />
+              <div className="h-1.5 w-full bg-white/10 rounded-full" />
+              <div className="h-3 w-36 bg-white/10 rounded" />
+            </div>
+          ) : telemetryStatus === 'unavailable' ? (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-500 font-mono">No data yet</p>
+              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                source: unavailable
+              </span>
+              <p className="text-[11px] text-slate-500 font-mono">
+                No budget telemetry backend is connected.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="text-xl font-bold text-slate-100 font-mono">
+                ${budgetStats.currentSpendUSD.toFixed(3)}{' '}
+                <span className="text-xs font-normal text-slate-500">/ ${budgetStats.dailyCapUSD.toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className="bg-amber-400 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (budgetStats.currentSpendUSD / Math.max(0.01, budgetStats.dailyCapUSD)) * 100)}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 flex justify-between font-mono">
+                <span>
+                  {budgetStats.currentSpendUSD >= budgetStats.dailyCapUSD
+                    ? <span className="text-rose-400">cap reached</span>
+                    : <span className="text-emerald-400">
+                        {(((budgetStats.dailyCapUSD - budgetStats.currentSpendUSD) / budgetStats.dailyCapUSD) * 100).toFixed(0)}% headroom
+                      </span>}
+                </span>
+                <span>{budgetStats.totalRequestsToday} calls · source: measured</span>
+              </p>
+            </>
+          )}
         </div>
 
-        <div className="bg-[#0a0a0a] p-4 rounded-xl border border-white/10 space-y-2">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="uppercase tracking-wider font-mono text-[10px]">Consolidated Limbs</span>
-            <Layers className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-xl font-bold text-slate-100 font-mono">
-            7 Active Modules <span className="text-xs font-normal text-slate-500">(34 forks)</span>
-          </div>
-          <p className="text-[11px] text-emerald-400 font-mono flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> 100% Zero-Duplication Architecture
-          </p>
-        </div>
-
+        {/* KPI 2: MCP Connectors */}
         <div className="bg-[#0a0a0a] p-4 rounded-xl border border-white/10 space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span className="uppercase tracking-wider font-mono text-[10px]">MCP Connectors</span>
             <Cpu className="w-4 h-4 text-sky-400" />
           </div>
-          <div className="text-xl font-bold text-slate-100 font-mono">
-            {mcps.filter((m) => m.status === 'connected').length} Connected
-          </div>
-          <p className="text-[11px] text-slate-500 font-mono">
-            Goose, Cherry, OpenClaw, Hermes
-          </p>
+          {mcps.length === 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-500 font-mono">No data yet</p>
+              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                source: unavailable
+              </span>
+              <p className="text-[11px] text-slate-500 font-mono">No connectors registered.</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-xl font-bold text-slate-100 font-mono">
+                {mcps.filter((m) => m.status === 'connected').length} Connected
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono">
+                {mcps.filter((m) => m.status === 'connected').length} of {mcps.length} registered ·{' '}
+                <span className={mcps.some((m) => m.status === 'connected') ? 'text-emerald-400' : 'text-slate-500'}>
+                  {mcps.some((m) => m.status === 'connected') ? 'up' : 'none up'}
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">source: measured (local state)</p>
+            </>
+          )}
         </div>
 
+        {/* KPI 3: Active Cron Jobs */}
         <div className="bg-[#0a0a0a] p-4 rounded-xl border border-white/10 space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs">
             <span className="uppercase tracking-wider font-mono text-[10px]">Active Cron Jobs</span>
             <Clock className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-bold text-slate-100 font-mono">
-            {cronJobs.filter((c) => c.status === 'active').length} Scheduled
-          </div>
-          <p className="text-[11px] text-slate-500 font-mono">
-            Nightly FHIR, Weekly LEAP
-          </p>
+          {cronJobs.length === 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-500 font-mono">No data yet</p>
+              <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                source: unavailable
+              </span>
+              <p className="text-[11px] text-slate-500 font-mono">No jobs scheduled yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-xl font-bold text-slate-100 font-mono">
+                {cronJobs.filter((c) => c.status === 'active').length} Scheduled
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono">
+                {cronJobs.filter((c) => c.status === 'active').length} of {cronJobs.length} jobs active ·{' '}
+                <span className={cronJobs[0]?.status === 'active' ? 'text-emerald-400' : 'text-slate-500'}>
+                  next: {cronJobs[0]?.status === 'active' ? cronJobs[0].humanSchedule : '—'}
+                </span>
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">source: measured (local state)</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -262,22 +311,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </span>
               </div>
               <div className="space-y-1 font-mono text-[11px] text-slate-400">
-                <div className="flex justify-between">
-                  <span>Goose CLI Connector:</span>
-                  <span className="text-slate-200">Connected (14ms)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cherry Studio Bridge:</span>
-                  <span className="text-slate-200">Connected (22ms)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>OpenClaw Agent MCP:</span>
-                  <span className="text-slate-200">Connected (18ms)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Hermes Scheduler MCP:</span>
-                  <span className="text-slate-200">Connected (12ms)</span>
-                </div>
+                {mcps.length === 0 ? (
+                  <div className="flex items-center justify-between">
+                    <span>Connectors:</span>
+                    <span className="text-slate-500">no data yet</span>
+                  </div>
+                ) : (
+                  mcps.map((m) => (
+                    <div key={m.id} className="flex justify-between">
+                      <span>{m.name}:</span>
+                      {m.status === 'connected' ? (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          Connected · source: measured
+                        </span>
+                      ) : (
+                        <span className="inline-block text-[10px] px-1.5 rounded bg-white/5 text-slate-400 border border-white/10">
+                          source: unavailable
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -286,8 +341,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>Next Scheduled Cron Job</span>
                 <Clock className="w-3.5 h-3.5 text-blue-400" />
               </div>
-              <p className="text-xs text-slate-200 font-semibold">{cronJobs[0]?.name}</p>
-              <p className="text-[11px] text-slate-400 font-mono">{cronJobs[0]?.humanSchedule}</p>
+              <p className="text-xs text-slate-200 font-semibold">{cronJobs[0]?.name ?? 'No jobs scheduled yet'}</p>
+              <p className="text-[11px] text-slate-400 font-mono">{cronJobs[0]?.humanSchedule ?? '—'}</p>
               <button
                 onClick={() => onNavigate('scheduler')}
                 className="w-full mt-1 py-1.5 bg-white/5 hover:bg-white/10 text-slate-200 rounded text-[11px] font-medium transition cursor-pointer border border-white/10"

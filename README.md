@@ -10,6 +10,74 @@
 
 ---
 
+## 🏛️ Architecture
+
+The repo contains three distinct parts with separate runtimes:
+
+| Part | Location | Runtime | Purpose |
+|---|---|---|---|
+| **Eval harness + dashboard** | `src/`, `harnesses/`, `config/`, `templates/`, `tests/` | Python / Flask | Benchmark evaluation engine (model scoring, deltas, provider comparison) plus its local Flask management UI |
+| **OneAgent Super-App** | `oneagent-super-app/` | TypeScript / Express + React (Vite) | The new generalist-agent app: Express API (`server.ts`), React 19 frontend, Python meta self-authoring core (`core/`) |
+| **Legacy HealthOS BA/QA suite** | `legacy-HealthOS-ba-qa/` | Python / FastAPI | The original automation platform — kept for reference, not part of the new app |
+
+### Eval harness & dashboard (Python)
+
+- `src/server.py` — Flask entry point using the **application-factory pattern**
+  (`create_app()`). Routes are split into blueprints under `src/webapp/`
+  (`results`, `compare`, `settings`). Configuration is environment-driven via a
+  `Config` class (`DASHBOARD_HOST`, `DASHBOARD_PORT`, `FLASK_DEBUG`,
+  `AUTH_TOKEN`). Errors are handled centrally: clients receive
+  `{error, correlationId}` (uuid4) while the detail is only logged server-side.
+- `src/dashboard.py` — data layer behind the API views; `harnesses/` holds the
+  `lm_eval` / `evalplus` runners; `config/*.yaml` holds models, providers and
+  benchmarks.
+
+```bash
+pip install -r requirements.txt          # flask etc.
+python -m src.server                     # http://127.0.0.1:5000
+python -m src.server --port 8080
+curl http://127.0.0.1:5000/health        # {"status": "ok", "version": ...}
+
+# tests
+python -m pytest tests/
+```
+
+### OneAgent Super-App (TypeScript)
+
+- `server.ts` — single Express server that serves both the REST API and the
+  Vite dev middleware (dev) or built SPA (production). Includes request-body
+  validation (non-object / >1 MB bodies → 400), a central error middleware
+  returning `{error: 'internal error', correlationId}`, and `/api/health`.
+  Endpoints report telemetry honestly: real values carry `source: 'measured'`;
+  anything not wired up returns `null` with `source: 'unavailable'` instead of
+  simulated numbers.
+- Frontend (`src/components/Dashboard.tsx`) follows dashboard UX best
+  practices: at most 3 KPI cards with trend/delta context, loading skeletons,
+  explicit "no data yet" empty states, and honest `source: unavailable` badges.
+
+```bash
+cd oneagent-super-app
+npm install
+npm run dev            # http://localhost:3000 (Express + Vite middleware)
+npm run build && npm start   # production build
+
+npx tsc --noEmit       # type-check frontend + server
+```
+
+### Legacy HealthOS suite (Python)
+
+Unchanged reference codebase (FastAPI in `legacy-HealthOS-ba-qa/api/main.py`,
+which exposes its own `/health` endpoint).
+
+```bash
+cd legacy-HealthOS-ba-qa
+pip install -r requirements.txt
+uvicorn api.main:app --reload   # http://127.0.0.1:8000 (/docs for OpenAPI)
+python -m pytest tests/
+```
+
+---
+
 ## 📦 Repository Structure
 
 ```

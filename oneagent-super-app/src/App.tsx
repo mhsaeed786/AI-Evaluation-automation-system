@@ -71,6 +71,22 @@ export default function App() {
   const [cronJobs, setCronJobs] = useState<CronJob[]>(INITIAL_CRON_JOBS);
   const [metaModules, setMetaModules] = useState<MetaModule[]>(INITIAL_META_MODULES);
 
+  // Budget telemetry status: no backend endpoint serves budget stats yet,
+  // so the dashboard shows a loading skeleton, then an honest
+  // 'source: unavailable' empty state instead of placeholder numbers.
+  const [telemetryStatus, setTelemetryStatus] = useState<'loading' | 'unavailable'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((res) => (res.ok ? null : Promise.reject(new Error(String(res.status)))))
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTelemetryStatus('unavailable'); // health exists; budget telemetry does not
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const [fhirInconsistencies, setFhirInconsistencies] = useState<FHIRInconsistency[]>(INITIAL_FHIR_INCONSISTENCIES);
   const [fhirBundle] = useState<FHIRBundleItem[]>(INITIAL_FHIR_BUNDLE);
   const [leapMetrics, setLeapMetrics] = useState<LEAPMetric[]>(INITIAL_LEAP_METRICS);
@@ -321,6 +337,7 @@ export default function App() {
               mcps={mcps}
               onNavigate={handleNavigate}
               onQuickRun={handleQuickRun}
+              telemetryStatus={telemetryStatus}
             />
           )}
 

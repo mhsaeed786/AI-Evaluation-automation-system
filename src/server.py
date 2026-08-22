@@ -12,179 +12,98 @@ A proper management application with:
   - Model-vs-model comparison
   - Run trigger (opt-in via OLLAMA_EVAL_ENABLE_RUN=1)
 
+Structure: application factory (`create_app`) + blueprints under src/webapp/
+(results, compare, settings). Configuration comes from environment variables.
+Errors are handled centrally: clients receive {error, correlationId} while the
+detailed traceback is only logged server-side.
+
 Uses threaded=True so concurrent API calls don't block each other.
 """
 from __future__ import annotations
 
 import argparse
+import logging
 import os
-import subprocess
 import sys
-from pathlib import Path
+import uuid
 
-from .config import PROJECT_ROOT, PROVIDERS, load_config
-from . import dashboard as D
+from .config import PROJECT_ROOT
 
 try:
-    from flask import Flask, jsonify, request, Response
+    from flask import Flask, jsonify
 except ImportError as e:  # pragma: no cover
     raise SystemExit(
         "The web UI needs Flask. Install it with:\n"
         "    pip install flask\n"
     ) from e
 
+from .webapp import compare, results, settings  # noqa: E402
+
 INDEX = PROJECT_ROOT / "templates" / "index.html"
+APP_VERSION = "1.0.0"
+
+logger = logging.getLogger("src.server")
 
 
-def create_app() -> Flask:
+class Config:
+    """Environment-driven configuration for the dashboard app."""
+
+    HOST = os.environ.get("DASHBOARD_HOST", "127.0.0.1")
+    PORT = int(os.environ.get("DASHBOARD_PORT", "5000"))
+    DEBUG = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    JSON_SORT_KEYS = False
+
+
+def create_app(config_object: type[Config] | None = None) -> Flask:
     app = Flask(__name__)
-    app.config["JSON_SORT_KEYS"] = False
+    app.config.from_object(config_object or Config)
 
-    # Cache config once; invalidated when settings change.
-    cfg_cache: dict = {"cfg": load_config(require_key=False)}
-
-    def _cfg():
-        return cfg_cache["cfg"]
-
-    def _check_auth():
-        """Require X-Auth-Token to match AUTH_TOKEN env when it is set."""
-        expected = os.environ.get("AUTH_TOKEN")
-        if not expected:
-            return None  # auth unset -> backwards-compatible open access
-        if request.headers.get("X-Auth-Token") != expected:
-            return jsonify({"error": "unauthorized"}), 401
-        return None
+    # --- Health ---
+    @app.get("/health")
+    def health():
+        return jsonify({"status": "ok", "version": APP_VERSION})
 
     # --- Page ---
-    @app.route("/")
+    @app.get("/")
     def index():
         return INDEX.read_text(encoding="utf-8")
 
-    # --- Data APIs ---
-    @app.route("/api/overview")
-    def api_overview():
-        return jsonify(D.overview(_cfg()))
+    # --- Blueprints ---
+    app.register_blueprint(results.bp)
+    app.register_blueprint(compare.bp)
+    app.register_blueprint(settings.bp)
 
-    @app.route("/api/matrix")
-    def api_matrix():
-        return jsonify(D.matrix(_cfg()))
+    # --- Centralized error handling ---
+    @app.errorhandler(404)
+    def not_found(err):
+        return jsonify({"error": "not found",
+                        "correlationId": str(uuid.uuid4())}), 404
 
-    @app.route("/api/deltas")
-    def api_deltas():
-        return jsonify(D.deltas(_cfg()))
+    @app.errorhandler(405)
+    def method_not_allowed(err):
+        return jsonify({"error": "method not allowed",
+                        "correlationId": str(uuid.uuid4())}), 405
 
-    @app.route("/api/providers")
-    def api_providers():
-        return jsonify(D.providers_view(_cfg()))
-
-    @app.route("/api/runs")
-    def api_runs():
-        return jsonify(D.run_history(_cfg()))
-
-    @app.route("/api/config")
-    def api_config():
-        cfg = _cfg()
-        return jsonify({
-            "models": [m.get("id") for m in cfg.models.get("models", [])],
-            "benchmarks": list(cfg.benchmarks.get("benchmarks", {}).keys()),
-            "profiles": list(cfg.models.get("profiles", {}).keys()),
-            "providers": list(PROVIDERS.keys()),
-            "base_url": cfg.base_url,
-        })
-
-    # --- Settings ---
-    @app.route("/api/settings", methods=["GET"])
-    def api_settings_get():
-        return jsonify(D.settings_view(_cfg()))
-
-    @app.route("/api/settings", methods=["POST"])
-    def api_settings_save():
-        denied = _check_auth()
-        if denied is not None:
-            return denied
-        body = request.get_json(silent=True) or {}
-        result = D.save_settings(_cfg(), body)
-        cfg_cache["cfg"] = load_config(require_key=False)  # invalidate cached config
-        return jsonify(result)
-
-    # --- Industry reference ---
-    @app.route("/api/industry")
-    def api_industry():
-        return jsonify(D.industry_reference(_cfg()))
-
-    @app.route("/api/compare")
-    def api_compare():
-        a = request.args.get("a", "")
-        b = request.args.get("b", "")
-        if not a or not b:
-            return jsonify({"error": "provide ?a=model1&b=model2"}), 400
-        return jsonify(D.model_comparison(_cfg(), a, b))
-
-    # --- Report export ---
-    @app.route("/api/export/csv")
-    def export_csv():
-        csv_str = D.export_csv(_cfg())
-        return Response(csv_str, mimetype="text/csv",
-                        headers={"Content-Disposition": "attachment; filename=eval_results.csv"})
-
-    @app.route("/api/export/json")
-    def export_json():
-        return Response(D.export_json(_cfg()), mimetype="application/json",
-                        headers={"Content-Disposition": "attachment; filename=eval_results.json"})
-
-    @app.route("/api/export/markdown")
-    def export_markdown():
-        return Response(D.export_markdown(_cfg()), mimetype="text/markdown",
-                        headers={"Content-Disposition": "attachment; filename=eval_report.md"})
-
-    # --- Run trigger ---
-    @app.route("/api/run", methods=["POST"])
-    def api_run():
-        denied = _check_auth()
-        if denied is not None:
-            return denied
-        if os.environ.get("OLLAMA_EVAL_ENABLE_RUN") != "1":
-            return jsonify({"ok": False,
-                            "error": "run trigger disabled (set OLLAMA_EVAL_ENABLE_RUN=1)"}), 403
-        cfg = _cfg()
-        body = request.get_json(silent=True) or {}
-        provider = str(body.get("provider", "all")).lower()
-        if provider != "all" and provider not in PROVIDERS:
-            provider = "ollama"
-        engine = str(body.get("engine", "builtin"))
-        if engine not in ("builtin", "lm_eval", "evalplus"):
-            engine = "builtin"
-        models = str(body.get("models", "auto")) or "auto"
-        benchmarks = str(body.get("benchmarks", "mmlu,gsm8k")) or "mmlu,gsm8k"
-        quick = bool(body.get("quick", True))
-        argv = [sys.executable, "-m", "src.runner",
-                "--provider", provider, "--models", models,
-                "--benchmarks", benchmarks, "--engine", engine]
-        if quick:
-            argv.append("--quick")
-        log_dir = PROJECT_ROOT / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
-        log_fh = open(log_dir / "run.log", "a", encoding="utf-8")
-        try:
-            proc = subprocess.Popen(argv, cwd=str(PROJECT_ROOT),
-                                    stdout=log_fh, stderr=subprocess.STDOUT)
-            log_fh.close()  # parent's copy; child keeps its inherited handles
-            return jsonify({"ok": True, "message": "run started — refresh in ~1 min"})
-        except Exception as e:  # noqa: BLE001
-            return jsonify({"ok": False, "error": repr(e)}), 500
+    @app.errorhandler(Exception)
+    def internal_error(err):
+        cid = str(uuid.uuid4())
+        logger.exception("Unhandled error [correlationId=%s]", cid)
+        if app.config.get("DEBUG"):
+            raise err  # let the dev server show the traceback when debugging
+        return jsonify({"error": "internal error", "correlationId": cid}), 500
 
     return app
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(prog="ollama-eval-dashboard", description=__doc__)
-    ap.add_argument("--host", default="127.0.0.1")
-    ap.add_argument("--port", type=int,
-                    default=int(os.environ.get("DASHBOARD_PORT", "5000")))
+    ap.add_argument("--host", default=Config.HOST)
+    ap.add_argument("--port", type=int, default=Config.PORT)
     ap.add_argument("--debug", action="store_true")
     args = ap.parse_args()
     print(f"Dashboard: http://{args.host}:{args.port}   (Ctrl-C to stop)")
-    create_app().run(host=args.host, port=args.port, debug=args.debug, threaded=True)
+    create_app().run(host=args.host, port=args.port,
+                     debug=args.debug or Config.DEBUG, threaded=True)
     return 0
 
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenAI } from '@google/genai';
@@ -18,9 +19,39 @@ function runPython(args: string[], cwd?: string): Promise<string> {
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const APP_VERSION = '1.0.0';
+const MAX_BODY_BYTES = 1024 * 1024;
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+
+function newCorrelationId(): string {
+  return randomUUID();
+}
+
+/**
+ * Request-body validation: reject non-object / oversized JSON bodies with 400
+ * before any handler runs.
+ */
+function requireJsonObject(req: express.Request, res: express.Response): boolean {
+  const len = Number(req.headers['content-length'] || 0);
+  if (len > MAX_BODY_BYTES) {
+    res.status(400).json({ error: 'request body too large', correlationId: newCorrelationId() });
+    return false;
+  }
+  const body = req.body;
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    res.status(400).json({ error: 'request body must be a JSON object', correlationId: newCorrelationId() });
+    return false;
+  }
+  return true;
+}
+
+// Apply validation to all mutating API routes centrally.
+app.use('/api', (req, res, next) => {
+  if (req.method === 'POST' && !requireJsonObject(req, res)) return;
+  next();
+});
 
 // Initialize GoogleGenAI client lazily
 function getGeminiClient(): GoogleGenAI | null {
@@ -46,6 +77,7 @@ function getGeminiClient(): GoogleGenAI | null {
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
+    version: APP_VERSION,
     app: 'OneAgent Super-App',
     geminiKeySet: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
     timestamp: new Date().toISOString(),
@@ -53,7 +85,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // 1. LLM Router direct generation
-app.post('/api/llm/generate', async (req, res) => {
+app.post('/api/llm/generate', async (req, res, next) => {
   try {
     const { prompt, model = 'gemini-3.6-flash', taskClass = 'reason', systemInstruction } = req.body;
     if (!prompt) {
@@ -68,44 +100,41 @@ app.post('/api/llm/generate', async (req, res) => {
         config: systemInstruction ? { systemInstruction } : undefined,
       });
 
+      // Only report usage/cost when the provider actually returns it;
+      // otherwise the fields stay null (never estimated).
+      const usage = (response as any).usageMetadata ?? null;
+
       return res.json({
-        text: response.text || 'No text output returned',
+        text: response.text || null,
         modelUsed: model,
-        tokensUsed: Math.floor(prompt.length / 4) + 120,
-        costEstimatedUSD: 0.00015,
-        source: 'live_gemini',
+        tokensUsed: usage?.totalTokenCount ?? null,
+        costEstimatedUSD: null,
+        source: 'measured',
       });
     }
 
-    // Fallback simulation when key is not set
-    const simulatedResponse = `[OneAgent Model Router - ${model} (${taskClass})]
-Analysis completed for prompt: "${prompt.slice(0, 60)}..."
---------------------------------------------------
-1. Task Classification: ${taskClass.toUpperCase()}
-2. Resolution: Successfully processed using OneAgent standard pipeline.
-3. Key Findings: Checked FHIR specifications, LEAP telemetry, and agent context. All parameters validated.`;
-
-    return res.json({
-      text: simulatedResponse,
+    // No API key configured — report honestly instead of simulating a reply.
+    return res.status(503).json({
+      text: null,
       modelUsed: model,
-      tokensUsed: 240,
-      costEstimatedUSD: 0.0001,
-      source: 'simulated_router',
+      tokensUsed: null,
+      costEstimatedUSD: null,
+      source: 'unavailable',
+      error: 'GEMINI_API_KEY not configured',
     });
   } catch (err: any) {
     console.error('Error in /api/llm/generate:', err);
-    res.status(500).json({ error: err.message || 'LLM generation failed' });
+    next(err);
   }
 });
 
 // 2. Generic Agent Loop Execution (Plan -> Tool -> Observe -> Output)
-app.post('/api/agent/run', async (req, res) => {
+app.post('/api/agent/run', async (req, res, next) => {
   try {
     const { taskPrompt, module = 'fhir', taskClass = 'reason', preferredModel = 'gemini-3.6-flash' } = req.body;
     const ai = getGeminiClient();
 
     const startTime = Date.now();
-    let finalAnswer = '';
 
     if (ai) {
       try {
@@ -113,126 +142,70 @@ app.post('/api/agent/run', async (req, res) => {
           model: preferredModel,
           contents: `You are the OneAgent Execution Engine for module '${module}'. Execute this task step-by-step, outlining the plan, tools needed, and final observation.\nTask: ${taskPrompt}`,
         });
-        finalAnswer = response.text || 'Task executed successfully.';
+        return res.json({
+          id: `run-${Date.now()}`,
+          taskPrompt,
+          module,
+          taskClass,
+          modelUsed: preferredModel,
+          status: 'completed',
+          output: response.text || null,
+          totalTokens: (response as any).usageMetadata?.totalTokenCount ?? null,
+          costUSD: null,
+          executionTimeMs: Date.now() - startTime,
+          source: 'measured',
+        });
       } catch (e: any) {
-        console.warn('Gemini call inside agent run failed, falling back to local simulation:', e.message);
+        console.warn('Gemini call inside agent run failed:', e.message);
       }
     }
 
-    if (!finalAnswer) {
-      finalAnswer = `[OneAgent Executed Step-by-Step for ${module.toUpperCase()}]
-Task: ${taskPrompt}
-- Step 1 (Plan): Identified target resources and tool dependencies.
-- Step 2 (Tool Call): Executed tool 'core/tools/${module}_processor' with schema validation.
-- Step 3 (Observe): Returned 0 errors, 1 warning, verified compliance with US-Core v6.1.0 and LEAP standards.
-- Final Output: Automated pipeline completed without critical failures.`;
-    }
-
-    const steps = [
-      {
-        stepNumber: 1,
-        phase: 'plan',
-        title: 'Formulate Agent Execution Plan',
-        details: `Analyzed task in class '${taskClass}'. Selected model '${preferredModel}' via ranking router.`,
-        timestamp: new Date(startTime).toLocaleTimeString(),
-      },
-      {
-        stepNumber: 2,
-        phase: 'tool_call',
-        title: `Invoke Tool '${module}_analyzer'`,
-        toolName: `${module}_analyzer`,
-        toolArgs: { promptSnippet: taskPrompt.slice(0, 50), timeout: 5000 },
-        details: 'Executing tool in sandbox isolated context...',
-        timestamp: new Date(startTime + 180).toLocaleTimeString(),
-      },
-      {
-        stepNumber: 3,
-        phase: 'observe',
-        title: 'Evaluate Output & Memory Store',
-        output: { status: 'SUCCESS', exitCode: 0, telemetryLogged: true },
-        details: 'Updated RAG memory vector cache with run output.',
-        timestamp: new Date(startTime + 350).toLocaleTimeString(),
-      },
-      {
-        stepNumber: 4,
-        phase: 'result',
-        title: 'Task Execution Complete',
-        details: finalAnswer,
-        timestamp: new Date(startTime + 480).toLocaleTimeString(),
-      },
-    ];
-
-    return res.json({
+    // No live engine available — report honestly rather than fabricating steps.
+    return res.status(503).json({
       id: `run-${Date.now()}`,
       taskPrompt,
       module,
       taskClass,
       modelUsed: preferredModel,
-      status: 'completed',
-      totalTokens: 420,
-      costUSD: 0.00035,
+      status: 'unavailable',
+      output: null,
+      totalTokens: null,
+      costUSD: null,
       executionTimeMs: Date.now() - startTime,
-      steps,
-      startedAt: new Date(startTime).toLocaleString(),
+      source: 'unavailable',
+      error: 'No LLM engine configured or reachable',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Agent loop execution failed' });
+    next(err);
   }
 });
 
 // 3. FHIR Inconsistency Audit Endpoint
-app.post('/api/fhir/audit', async (req, res) => {
+app.post('/api/fhir/audit', async (req, res, next) => {
   try {
     const { resourceType = 'Patient', resourceData } = req.body;
-    const issues = [];
 
-    if (resourceType === 'Patient') {
-      issues.push({
-        id: `inc-${Date.now()}-1`,
-        resourceType: 'Patient',
-        resourceId: resourceData?.id || 'pat-demo',
-        field: 'identifier.system',
-        issue: 'System URI does not match US-Core mandatory profile string "http://hospital.smarthealthit.org"',
-        severity: 'critical',
-        suggestedFix: 'Set identifier[0].system = "http://hospital.smarthealthit.org"',
-      });
-      issues.push({
-        id: `inc-${Date.now()}-2`,
-        resourceType: 'Patient',
-        resourceId: resourceData?.id || 'pat-demo',
-        field: 'telecom.value',
-        issue: 'Phone number format lacks E.164 country code (+1)',
-        severity: 'warning',
-        suggestedFix: 'Prefix phone string with +1',
-      });
-    } else {
-      issues.push({
-        id: `inc-${Date.now()}-3`,
-        resourceType: resourceType || 'Observation',
-        resourceId: 'res-998',
-        field: 'code.coding.system',
-        issue: 'LOINC code system URL requires standard HTTP schema',
-        severity: 'info',
-        suggestedFix: 'Ensure http://loinc.org is present',
-      });
-    }
-
+    // No audit engine is wired up yet — report honestly instead of
+    // returning fabricated findings.
     res.json({
       resourceType,
+      resourceId: resourceData?.id ?? null,
       auditedAt: new Date().toISOString(),
-      passed: false,
-      issuesCount: issues.length,
-      issues,
+      passed: null,
+      issuesCount: 0,
+      issues: [],
+      source: 'unavailable',
+      message: 'No FHIR audit engine connected; no issues can be reported.',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 4. Meta Module Authoring Engine Endpoints (Python core/meta/ integration)
 
 // 4a. Author a new module using core.meta.cli author
-app.post('/api/meta/author', async (req, res) => {
+app.post('/api/meta/author', async (req, res, next) => {
   try {
     const { moduleName, promptRequirements } = req.body;
     if (!moduleName || !promptRequirements) {
@@ -243,7 +216,7 @@ app.post('/api/meta/author', async (req, res) => {
     const safeReqs = String(promptRequirements);
 
     try {
-      const { stdout } = await runPython(['-m', 'core.meta.cli', 'author', '--name', safeName, '--reqs', safeReqs]);
+      const stdout = await runPython(['-m', 'core.meta.cli', 'author', '--name', safeName, '--reqs', safeReqs]);
       const pythonResult = JSON.parse(stdout);
       
       // Transform snake_case Python result to frontend interface
@@ -262,46 +235,40 @@ app.post('/api/meta/author', async (req, res) => {
         sandboxOutput: pythonResult.sandbox_output,
         provenance: {
           generatedBy: pythonResult.provenance?.generated_by || 'OneAgent Meta Self-Authoring Sandbox',
-          tokenCount: pythonResult.provenance?.token_count || 850,
+          tokenCount: pythonResult.provenance?.token_count ?? null,
           parentFramework: pythonResult.provenance?.parent_framework || 'OneAgent Meta Core v1.0',
         },
       };
 
       return res.json(formattedModule);
     } catch (cmdErr: any) {
-      console.warn('[Meta API] Python author invocation failed, falling back to local JS generator:', cmdErr.message);
-
-      const slug = moduleName.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      const fallbackModule = {
-        id: `meta-${Date.now()}`,
+      console.warn('[Meta API] Python author invocation failed:', cmdErr.message);
+      // The authoring engine is unavailable — report honestly instead of
+      // returning a locally fabricated module.
+      return res.status(503).json({
+        id: null,
         name: moduleName,
-        slug,
+        slug: String(moduleName).toLowerCase().replace(/[^a-z0-9]+/g, '_'),
         description: promptRequirements,
-        promptOrigin: promptRequirements,
-        modelAuthor: 'OneAgent Synth Engine (gemini-3.1-pro-preview)',
-        timestamp: new Date().toLocaleString(),
-        status: 'pending',
-        codeSnippet: `def ${slug}_processor(data_input: dict) -> dict:\n    """\n    Auto-generated OneAgent Module: ${moduleName}\n    """\n    records = data_input.get("items", [])\n    return {"module": "${slug}", "status": "SUCCESS", "processed_count": len(records)}`,
-        testsCode: `def test_${slug}_processor():\n    assert ${slug}_processor({})["status"] == "SUCCESS"`,
-        testPassRate: 100,
-        sandboxOutput: `pytest sandbox/test_${slug}.py: 2 passed in 0.04s. Isolated venv verification completed successfully.`,
-        provenance: {
-          generatedBy: 'OneAgent Meta Self-Authoring Sandbox',
-          tokenCount: 820,
-          parentFramework: 'OneAgent Meta Core v1.0',
-        },
-      };
-      return res.json(fallbackModule);
+        status: 'unavailable',
+        codeSnippet: null,
+        testsCode: null,
+        testPassRate: null,
+        sandboxOutput: null,
+        provenance: { generatedBy: null, tokenCount: null, parentFramework: null },
+        source: 'unavailable',
+        error: 'Meta authoring engine (core.meta.cli) failed or is not installed',
+      });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 4b. List registered self-authored modules
-app.get('/api/meta/list', async (_req, res) => {
+app.get('/api/meta/list', async (_req, res, next) => {
   try {
-    const { stdout } = await runPython(['-m', 'core.meta.cli', 'list']);
+    const stdout = await runPython(['-m', 'core.meta.cli', 'list']);
     const rawList = JSON.parse(stdout);
     const formatted = rawList.map((m: any) => ({
       id: m.id,
@@ -318,7 +285,7 @@ app.get('/api/meta/list', async (_req, res) => {
       sandboxOutput: m.sandbox_output,
       provenance: {
         generatedBy: m.provenance?.generated_by || 'OneAgent Meta Core',
-        tokenCount: m.provenance?.token_count || 800,
+        tokenCount: m.provenance?.token_count ?? null,
         parentFramework: m.provenance?.parent_framework || 'OneAgent Meta Core v1.0',
       },
     }));
@@ -329,121 +296,101 @@ app.get('/api/meta/list', async (_req, res) => {
 });
 
 // 4c. Update module status (approve / reject / revert)
-app.post('/api/meta/status', async (req, res) => {
+app.post('/api/meta/status', async (req, res, next) => {
   try {
     const { id, status } = req.body;
     if (!id || !status) {
       return res.status(400).json({ error: 'id and status are required' });
     }
-    const { stdout } = await runPython(['-m', 'core.meta.cli', 'status', '--id', String(id), '--status', String(status)]);
+    const stdout = await runPython(['-m', 'core.meta.cli', 'status', '--id', String(id), '--status', String(status)]);
     const m = JSON.parse(stdout);
     res.json(m);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 4d. Execute module inside isolated sandbox
-app.post('/api/meta/run', async (req, res) => {
+app.post('/api/meta/run', async (req, res, next) => {
   try {
     const { id, inputData } = req.body;
     if (!id) {
       return res.status(400).json({ error: 'id is required' });
     }
     const inputJson = JSON.stringify(inputData || {});
-    const { stdout } = await runPython(['-m', 'core.meta.cli', 'run', '--id', String(id), '--input', inputJson]);
+    const stdout = await runPython(['-m', 'core.meta.cli', 'run', '--id', String(id), '--input', inputJson]);
     res.json(JSON.parse(stdout));
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 5. Knowledge Base & RAG Endpoint
-app.post('/api/knowledge/query', async (req, res) => {
+app.post('/api/knowledge/query', async (req, res, next) => {
   try {
     const { query } = req.body;
     if (!query) {
       return res.status(400).json({ error: 'Query parameter is required' });
     }
 
-    const ai = getGeminiClient();
-    let RAGResults = [
-      {
-        id: 'doc-1',
-        source: 'Outlook M365 (Account: Primary)',
-        title: `Indexed Match for "${query.slice(0, 30)}"`,
-        snippet: `...found matching compliance guidelines regarding ${query} in HealthOS technical architecture archives...`,
-        score: 0.96,
-        timestamp: new Date().toLocaleDateString()
-      },
-      {
-        id: 'doc-2',
-        source: 'Azure DevOps TFS On-Prem',
-        title: 'ADO Pipeline Config: fhir_auditor_build.yaml',
-        snippet: `...automated pipeline step checking ${query} with zero-latency SQLite index verification...`,
-        score: 0.91,
-        timestamp: new Date().toLocaleDateString()
-      },
-      {
-        id: 'doc-3',
-        source: 'Imported Session (Gemini CLI)',
-        title: 'Session_2026-07-20_Knowledge_Extraction.json',
-        snippet: `...model agent notes on ${query}: validated schema against US-Core v6.1 and LEAP metrics...`,
-        score: 0.85,
-        timestamp: new Date().toLocaleDateString()
-      }
-    ];
-
-    return res.json({ query, resultsCount: RAGResults.length, results: RAGResults });
+    // No RAG index is wired up in this server — report honestly instead of
+    // returning fabricated search hits.
+    return res.json({
+      query,
+      resultsCount: 0,
+      results: [],
+      source: 'unavailable',
+      message: 'No knowledge-base index connected to this server.',
+    });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Firecrawl Scraping Endpoint
-app.post('/api/tools/firecrawl', async (req, res) => {
+app.post('/api/tools/firecrawl', async (req, res, next) => {
   try {
     const { url } = req.body;
     const targetUrl = url || 'https://www.hl7.org/fhir/overview.html';
-    
-    return res.json({
-      status: 'success',
+
+    // No scraping backend configured — report honestly instead of returning
+    // fabricated page content.
+    return res.status(503).json({
+      status: 'unavailable',
       url: targetUrl,
-      title: 'HL7 FHIR Overview & Technical Specification',
-      markdown: `# HL7 FHIR Overview\n\nFast Healthcare Interoperability Resources (FHIR) defines a set of "Resources" that represent granular clinical concepts.\n\n## Key REST Operations\n- **GET [base]/Patient/[id]**: Retrieve patient record\n- **POST [base]/Claim**: Submit healthcare claim for adjudication\n\n*Extracted via Firecrawl LLM-optimized Markdown Engine.*`,
-      metadata: {
-        statusCode: 200,
-        linksCount: 42,
-        crawledAt: new Date().toISOString()
-      }
+      title: null,
+      markdown: null,
+      metadata: { statusCode: null, linksCount: null, crawledAt: new Date().toISOString() },
+      source: 'unavailable',
+      error: 'No scraping backend (e.g. Firecrawl) configured',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // Browser-Use Playwright Agent Endpoint
-app.post('/api/tools/browser-use', async (req, res) => {
+app.post('/api/tools/browser-use', async (req, res, next) => {
   try {
     const { goal } = req.body;
-    return res.json({
-      status: 'completed',
-      goal: goal || 'Visual Web Navigation',
-      stepsExecuted: [
-        { step: 1, action: 'GOTO_URL', target: 'https://dev.azure.com/HealthOS' },
-        { step: 2, action: 'INSPECT_DOM_TREE', elementsFound: 14 },
-        { step: 3, action: 'CLICK_BUTTON', selector: '#build-pipeline-trigger' },
-        { step: 4, action: 'EXTRACT_TEXT', content: 'Pipeline #1042 Build Status: SUCCESS (0 errors)' }
-      ],
-      screenshotUrl: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="%230d1117"/><text x="20" y="40" fill="%2358a6ff" font-family="monospace">Playwright Headless Chrome - Browser-Use</text><text x="20" y="80" fill="%233fb950" font-family="monospace">✓ Goal Completed: ${goal || 'Navigation'}</text></svg>`
+
+    // No browser automation runtime is attached to this server — report
+    // honestly instead of returning fabricated steps/screenshots.
+    return res.status(503).json({
+      status: 'unavailable',
+      goal: goal || null,
+      stepsExecuted: [],
+      screenshotUrl: null,
+      source: 'unavailable',
+      error: 'No browser automation backend (Playwright/browser-use) configured',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 6. Deep Research & SaaS Opportunity Finder
-app.post('/api/research/run', async (req, res) => {
+app.post('/api/research/run', async (req, res, next) => {
   try {
     const { topic } = req.body;
     const ai = getGeminiClient();
@@ -462,43 +409,33 @@ app.post('/api/research/run', async (req, res) => {
     }
 
     if (!summaryText) {
-      summaryText = `Key Research Insights for "${topic}":
-1. High demand for real-time compliance automation across FHIR US-Core and LEAP telemetry specs.
-2. Interoperability mandates require cryptographic logging and continuous audit dashboards.
-3. EHR integration teams spend 35% of QA cycles manually checking FHIR bundles.`;
+      // No research engine available — report honestly instead of
+      // synthesizing mock insights.
+      return res.status(503).json({
+        id: `rep-${Date.now()}`,
+        topic,
+        summary: null,
+        keyTakeaways: [],
+        sources: [],
+        saasOpportunities: [],
+        date: new Date().toLocaleDateString(),
+        source: 'unavailable',
+        error: 'No LLM engine configured for deep research synthesis',
+      });
     }
 
     res.json({
       id: `rep-${Date.now()}`,
       topic,
       summary: summaryText,
-      keyTakeaways: [
-        `HTI-2 rules mandate continuous FHIR API audit logging.`,
-        `Automated agent loops reduce QA verification cycles from 4 hours to 45 seconds.`,
-        `Cross-framework MCP connectors allow Go/Python/TS agent orchestration.`,
-      ],
-      sources: [
-        { title: 'ONC Health IT Implementation Manual', url: 'https://www.healthit.gov' },
-        { title: 'HL7 FHIR Infrastructure Standards', url: 'https://hl7.org/fhir' },
-      ],
-      saasOpportunities: [
-        {
-          title: `Automated ${topic.slice(0, 20)} Auditor`,
-          targetAudience: 'HealthTech Engineering Leads',
-          difficulty: 'Low-Medium',
-          marketGap: 'Lack of single-click US-Core & LEAP validation CLI engines.',
-        },
-        {
-          title: 'OneAgent Enterprise MCP Hub',
-          targetAudience: 'Agentic AI Developers',
-          difficulty: 'Medium',
-          marketGap: 'Absence of unified token router and model ranking management for multi-agent suites.',
-        },
-      ],
+      keyTakeaways: [],
+      sources: [],
+      saasOpportunities: [],
       date: new Date().toLocaleDateString(),
+      source: 'measured',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
@@ -507,79 +444,84 @@ app.post('/api/research/run', async (req, res) => {
 // ========================================================
 
 // 7. Workspace Files (SOUL.md, AGENTS.md, USER.md, etc.)
-app.get('/api/workspace/context', async (_req, res) => {
+app.get('/api/workspace/context', async (_req, res, next) => {
   try {
     try {
       const context = await runPython(['-c', 'from core.workspace import WorkspaceManager; wm = WorkspaceManager(); print(wm.build_system_prompt_context())']);
-      res.json({ context: context.trim() || '(empty workspace)' });
+      res.json({ context: context.trim() || null, source: 'measured' });
     } catch {
-      res.json({
-        context: `# OneAgent Workspace Context\n\n## IDENTITY.md\n**Name:** OneAgent\n**Emoji:** 🧠\n\n## SOUL.md\nYou are OneAgent, a generalist AI agent that learns from your data and evolves specialist limbs.\n\n## AGENTS.md\nPlan → Execute → Observe → Repeat\n\n## USER.md\n*(Not yet configured — update via the Specialist Evolution tab)*`
+      // Workspace module unavailable — no fabricated SOUL.md/AGENTS.md content.
+      res.status(503).json({
+        context: null,
+        source: 'unavailable',
+        error: 'core.workspace module not available',
       });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/workspace/initialize', async (req, res) => {
+app.post('/api/workspace/initialize', async (req, res, next) => {
   try {
     const { user_name, user_role } = req.body;
     try {
       const result = await runPython(['-c', "import sys; from core.workspace import WorkspaceManager; wm = WorkspaceManager(); wm.initialize_default_workspace(sys.argv[1], sys.argv[2]); print('OK')", String(user_name || ''), String(user_role || '')]);
       res.json({ status: 'initialized', result: result.trim() });
     } catch {
-      res.json({ status: 'simulated', message: 'Workspace initialized with default files' });
+      res.status(503).json({ status: 'unavailable', source: 'unavailable', error: 'core.workspace module not available' });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 8. Session Management (JSONL transcript + liveness)
-app.get('/api/sessions', async (_req, res) => {
+app.get('/api/sessions', async (_req, res, next) => {
   try {
     try {
       const result = await runPython(['-c', 'from core.session import SessionManager; sm = SessionManager(); import json; print(json.dumps(sm.list_sessions()))']);
       res.json(JSON.parse(result));
     } catch {
-      res.json([
-        { session_id: 'sess-demo-1', agent_id: 'main', status: 'active', turn_count: 14, token_count: 8420, updated_at: new Date().toISOString() },
-        { session_id: 'sess-demo-2', agent_id: 'main', status: 'idle', turn_count: 3, token_count: 1200, updated_at: new Date(Date.now() - 3600000).toISOString() },
-      ]);
+      // Session store unavailable — return empty rather than demo data.
+      res.json([]);
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/sessions/create', async (req, res) => {
+app.post('/api/sessions/create', async (req, res, next) => {
   try {
     const { agent_id = 'main' } = req.body;
     const sessionId = `sess-${Date.now()}`;
     res.json({ session_id: sessionId, agent_id, status: 'active', created_at: new Date().toISOString() });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 9. Session Liveness Classification
-app.get('/api/sessions/:sessionId/liveness', async (req, res) => {
+app.get('/api/sessions/:sessionId/liveness', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
+    // Liveness classification requires a live session backend — report
+    // honestly instead of always claiming 'active'.
     res.json({
       session_id: sessionId,
-      liveness: 'active',
-      remediation: 'No action needed.',
-      last_interaction: new Date().toISOString(),
+      liveness: null,
+      remediation: null,
+      last_interaction: null,
+      source: 'unavailable',
+      message: 'No session backend connected; liveness unknown.',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 10. SSE Streaming for Agent Steps (Eigen-style step playback)
-app.get('/api/agent/stream/:runId', async (req, res) => {
+app.get('/api/agent/stream/:runId', async (req, res, next) => {
   const { runId } = req.params;
   const delay = Math.min(parseFloat(req.query.delay as string) || 0, 5);
 
@@ -589,64 +531,60 @@ app.get('/api/agent/stream/:runId', async (req, res) => {
     'Connection': 'keep-alive',
   });
 
-  const steps = [
-    { step: 1, phase: 'plan', title: 'Formulate Plan', details: `Run ${runId}: Analyzing task and selecting tools...` },
-    { step: 2, phase: 'tool_call', title: 'Execute Tool', toolName: 'web_search', details: 'Searching for relevant information...' },
-    { step: 3, phase: 'observe', title: 'Observe Result', details: 'Parsed 5 results from web search.' },
-    { step: 4, phase: 'tool_call', title: 'Execute Tool', toolName: 'browser_use', details: 'Navigating to top result...' },
-    { step: 5, phase: 'observe', title: 'Observe Result', details: 'Extracted page content successfully.' },
-    { step: 6, phase: 'result', title: 'Task Complete', details: 'Synthesized final answer from gathered data.' },
-  ];
-
-  for (const step of steps) {
-    res.write(`data: ${JSON.stringify(step)}\n\n`);
-    if (delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay * 1000));
-    }
+  // No agent execution backend streams real steps yet — emit an explicit
+  // unavailable event instead of simulated step playback.
+  if (delay > 0) {
+    await new Promise(resolve => setTimeout(resolve, Math.min(delay * 1000, 1000)));
   }
 
-  res.write(`data: ${JSON.stringify({ type: 'done', runId })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'unavailable', runId, source: 'unavailable', message: 'No agent execution backend connected.' })}\n\n`);
   res.end();
 });
 
 // 11. Sub-Agent Management
-app.post('/api/subagent/spawn', async (req, res) => {
+app.post('/api/subagent/spawn', async (req, res, next) => {
   try {
     const { parent_session_id, task, context_mode = 'isolated' } = req.body;
     if (!parent_session_id || !task) {
       return res.status(400).json({ error: 'parent_session_id and task are required' });
     }
     const runId = `subagent-${Date.now()}`;
-    res.json({
+    // Sub-agent execution runtime is not attached to this server — report
+    // honestly instead of pretending the sub-agent started running.
+    res.status(503).json({
       run_id: runId,
       parent_session_id,
-      child_session_id: `subagent:${runId}`,
+      child_session_id: null,
       task,
       context_mode,
-      status: 'running',
-      message: 'Sub-agent spawned. Use GET /api/subagent/:runId to check status.',
+      status: 'unavailable',
+      message: 'No sub-agent execution backend connected.',
+      source: 'unavailable',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.get('/api/subagent/:runId', async (req, res) => {
+app.get('/api/subagent/:runId', async (req, res, next) => {
   try {
     const { runId } = req.params;
+    // No execution runtime — status is genuinely unknown, not 'completed'.
     res.json({
       run_id: runId,
-      status: 'completed',
-      result: `[Sub-Agent] Task completed successfully. Processed in background with push-based completion.`,
-      tokens_used: 850,
-      runtime_ms: 1200,
+      status: 'unknown',
+      result: null,
+      tokens_used: null,
+      runtime_ms: null,
+      source: 'unavailable',
+      message: 'No sub-agent execution backend connected.',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.get('/api/subagent', async (_req, res) => {
+app.get('/api/subagent', async (_req, res, next) => {
   try {
     res.json({
       active_count: 0,
@@ -656,12 +594,12 @@ app.get('/api/subagent', async (_req, res) => {
       runs: [],
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 12. Harness Registry
-app.get('/api/harnesses', async (_req, res) => {
+app.get('/api/harnesses', async (_req, res, next) => {
   try {
     res.json({
       harnesses: [
@@ -671,12 +609,12 @@ app.get('/api/harnesses', async (_req, res) => {
       default: 'gemini',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 13. Capabilities Registry
-app.get('/api/capabilities', async (_req, res) => {
+app.get('/api/capabilities', async (_req, res, next) => {
   try {
     res.json({
       providers: [
@@ -696,12 +634,12 @@ app.get('/api/capabilities', async (_req, res) => {
       capability_types: ['text_inference', 'web_search', 'web_fetch', 'browser_control', 'code_execution', 'file_ops', 'shell_exec', 'image_generation', 'image_analysis', 'data_storage', 'message_channel', 'scheduler', 'rag', 'embedding', 'mcp_server', 'skill_provider', 'meta_author'],
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 14. Hook System
-app.get('/api/hooks', async (_req, res) => {
+app.get('/api/hooks', async (_req, res, next) => {
   try {
     res.json({
       plugin_hooks: [
@@ -712,11 +650,11 @@ app.get('/api/hooks', async (_req, res) => {
       events: ['before_model_resolve', 'before_prompt_build', 'before_agent_reply', 'after_agent_reply', 'before_tool_call', 'after_tool_call', 'tool_result_persist', 'session_create', 'session_start', 'session_end', 'session_compact', 'before_message_send', 'after_message_receive', 'gateway_startup', 'gateway_shutdown'],
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/hooks/register', async (req, res) => {
+app.post('/api/hooks/register', async (req, res, next) => {
   try {
     const { event, name, priority = 50, description = '' } = req.body;
     if (!event || !name) {
@@ -724,12 +662,12 @@ app.post('/api/hooks/register', async (req, res) => {
     }
     res.json({ status: 'registered', event, name, priority, description });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 15. Recipes (Multi-step pipelines)
-app.get('/api/recipes', async (_req, res) => {
+app.get('/api/recipes', async (_req, res, next) => {
   try {
     res.json([
       {
@@ -755,55 +693,55 @@ app.get('/api/recipes', async (_req, res) => {
       },
     ]);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/recipes/:recipeId/run', async (req, res) => {
+app.post('/api/recipes/:recipeId/run', async (req, res, next) => {
   try {
     const { recipeId } = req.params;
     const { params = {} } = req.body;
-    res.json({
+    // No pipeline runner is attached to this server — report honestly
+    // instead of returning fabricated step results.
+    res.status(503).json({
       recipe_id: recipeId,
-      status: 'completed',
-      completed_steps: 4,
-      total_steps: 4,
-      results: [
-        { step_name: 'search', status: 'success', duration_ms: 340 },
-        { step_name: 'scrape', status: 'success', duration_ms: 890 },
-        { step_name: 'analyze', status: 'success', duration_ms: 2100 },
-        { step_name: 'report', status: 'success', duration_ms: 650 },
-      ],
-      duration_ms: 3980,
+      params,
+      status: 'unavailable',
+      completed_steps: 0,
+      total_steps: null,
+      results: [],
+      duration_ms: null,
+      source: 'unavailable',
+      error: 'No pipeline runner backend connected',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 16. Diagnostics
-app.get('/api/diagnostics/flags', async (_req, res) => {
+app.get('/api/diagnostics/flags', async (_req, res, next) => {
   try {
     res.json({
       flags: [],
       available_flags: ['gateway.*', 'browser.act', 'session.long_running', 'session.stalled', 'timeline'],
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/diagnostics/flags', async (req, res) => {
+app.post('/api/diagnostics/flags', async (req, res, next) => {
   try {
     const { flag, action = 'enable' } = req.body;
     res.json({ status: action, flag });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 17. Queue / Steering
-app.post('/api/queue/steer/:sessionId', async (req, res) => {
+app.post('/api/queue/steer/:sessionId', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { content } = req.body;
@@ -813,11 +751,11 @@ app.post('/api/queue/steer/:sessionId', async (req, res) => {
       message: 'Steering message queued. Will be delivered after current tool calls, before next LLM call.',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
-app.post('/api/queue/followup/:sessionId', async (req, res) => {
+app.post('/api/queue/followup/:sessionId', async (req, res, next) => {
   try {
     const { sessionId } = req.params;
     const { content } = req.body;
@@ -827,12 +765,12 @@ app.post('/api/queue/followup/:sessionId', async (req, res) => {
       message: 'Followup message queued. Will start a new turn after current one ends.',
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 });
 
 // 18. Security: Command Validation
-app.post('/api/security/validate-command', async (req, res) => {
+app.post('/api/security/validate-command', async (req, res, next) => {
   try {
     const { command } = req.body;
     const dangerous = /(?:;|\|\||&&|`|\$\(|\$\{|\n|\r|>\s|<\s|\(\s*\))/;
@@ -853,8 +791,16 @@ app.post('/api/security/validate-command', async (req, res) => {
       allowed_binaries: [...allowed].sort(),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
+});
+
+// Central error handler — clients get a generic message + correlationId;
+// the detailed error is only logged server-side.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const correlationId = newCorrelationId();
+  console.error(`[error] correlationId=${correlationId}`, err);
+  res.status(500).json({ error: 'internal error', correlationId });
 });
 
 // Start Server async wrapper to support Vite dev server middleware
@@ -869,7 +815,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
+    app.get('*', (_req, res, next) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
