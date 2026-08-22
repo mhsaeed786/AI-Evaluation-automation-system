@@ -135,12 +135,25 @@ class RecipeRunner:
         - "steps.scan.status == 'success'"
         """
         try:
-            # Safe eval with limited namespace
+            # Safe AST-based evaluation: only comparison/logic expressions allowed
+            import ast
+
+            ALLOWED_NODES = (
+                ast.Expression, ast.BoolOp, ast.And, ast.Or, ast.UnaryOp, ast.Not,
+                ast.Compare, ast.Name, ast.Attribute, ast.Subscript,
+                ast.Load, ast.Constant, ast.Eq, ast.NotEq, ast.Lt, ast.LtE,
+                ast.Gt, ast.GtE, ast.Is, ast.IsNot, ast.In, ast.NotIn,
+            )
+            tree = ast.parse(when_expr, mode="eval")
+            for node in ast.walk(tree):
+                if not isinstance(node, ALLOWED_NODES):
+                    raise ValueError(f"Disallowed syntax: {type(node).__name__}")
             namespace = {"context": context, "steps": context.get("steps", {})}
-            return bool(eval(when_expr, {"__builtins__": {}}, namespace))
-        except Exception:
-            # If expression fails, default to True (run the step)
-            return True
+            return bool(eval(compile(tree, "<condition>", "eval"), {"__builtins__": {}}, namespace))
+        except Exception as e:
+            # If the expression fails to parse or evaluate, don't run the step.
+            print(f"Warning: invalid condition expression {when_expr!r}: {e}")
+            return False
 
     def _resolve_step_order(self, steps: List[RecipeStep]) -> List[List[RecipeStep]]:
         """Resolve step execution order based on dependencies (topological sort).

@@ -1,11 +1,19 @@
 import express from 'express';
 import path from 'path';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
 const execAsync = promisify(exec);
+
+// Run a Python subprocess with an argv array (no shell interpolation).
+function runPython(args: string[], cwd?: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile('python3', args, { maxBuffer: 1024 * 1024, cwd }, (err, stdout) =>
+      err ? reject(err) : resolve(stdout));
+  });
+}
 
 dotenv.config();
 
@@ -231,11 +239,11 @@ app.post('/api/meta/author', async (req, res) => {
       return res.status(400).json({ error: 'moduleName and promptRequirements are required' });
     }
 
-    const safeName = String(moduleName).replace(/"/g, '\\"');
-    const safeReqs = String(promptRequirements).replace(/"/g, '\\"');
+    const safeName = String(moduleName);
+    const safeReqs = String(promptRequirements);
 
     try {
-      const { stdout } = await execAsync(`python3 -m core.meta.cli author --name "${safeName}" --reqs "${safeReqs}"`);
+      const { stdout } = await runPython(['-m', 'core.meta.cli', 'author', '--name', safeName, '--reqs', safeReqs]);
       const pythonResult = JSON.parse(stdout);
       
       // Transform snake_case Python result to frontend interface
@@ -293,7 +301,7 @@ app.post('/api/meta/author', async (req, res) => {
 // 4b. List registered self-authored modules
 app.get('/api/meta/list', async (_req, res) => {
   try {
-    const { stdout } = await execAsync('python3 -m core.meta.cli list');
+    const { stdout } = await runPython(['-m', 'core.meta.cli', 'list']);
     const rawList = JSON.parse(stdout);
     const formatted = rawList.map((m: any) => ({
       id: m.id,
@@ -327,7 +335,7 @@ app.post('/api/meta/status', async (req, res) => {
     if (!id || !status) {
       return res.status(400).json({ error: 'id and status are required' });
     }
-    const { stdout } = await execAsync(`python3 -m core.meta.cli status --id "${id}" --status "${status}"`);
+    const { stdout } = await runPython(['-m', 'core.meta.cli', 'status', '--id', String(id), '--status', String(status)]);
     const m = JSON.parse(stdout);
     res.json(m);
   } catch (err: any) {
@@ -342,8 +350,8 @@ app.post('/api/meta/run', async (req, res) => {
     if (!id) {
       return res.status(400).json({ error: 'id is required' });
     }
-    const inputJson = JSON.stringify(inputData || {}).replace(/"/g, '\\"');
-    const { stdout } = await execAsync(`python3 -m core.meta.cli run --id "${id}" --input "${inputJson}"`);
+    const inputJson = JSON.stringify(inputData || {});
+    const { stdout } = await runPython(['-m', 'core.meta.cli', 'run', '--id', String(id), '--input', inputJson]);
     res.json(JSON.parse(stdout));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -501,13 +509,8 @@ app.post('/api/research/run', async (req, res) => {
 // 7. Workspace Files (SOUL.md, AGENTS.md, USER.md, etc.)
 app.get('/api/workspace/context', async (_req, res) => {
   try {
-    const { execAsync: execA } = await import('util');
-    const { exec: execC } = await import('child_process');
-    const execAsync2 = (cmd: string) => new Promise<string>((resolve, reject) => {
-      execC(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => err ? reject(err) : resolve(stdout));
-    });
     try {
-      const context = await execAsync2('python3 -c "from core.workspace import WorkspaceManager; wm = WorkspaceManager(); print(wm.build_system_prompt_context())"');
+      const context = await runPython(['-c', 'from core.workspace import WorkspaceManager; wm = WorkspaceManager(); print(wm.build_system_prompt_context())']);
       res.json({ context: context.trim() || '(empty workspace)' });
     } catch {
       res.json({
@@ -522,12 +525,8 @@ app.get('/api/workspace/context', async (_req, res) => {
 app.post('/api/workspace/initialize', async (req, res) => {
   try {
     const { user_name, user_role } = req.body;
-    const { exec: execC } = await import('child_process');
-    const execAsync2 = (cmd: string) => new Promise<string>((resolve, reject) => {
-      execC(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => err ? reject(err) : resolve(stdout));
-    });
     try {
-      const result = await execAsync2(`python3 -c "from core.workspace import WorkspaceManager; wm = WorkspaceManager(); wm.initialize_default_workspace('${user_name || ''}', '${user_role || ''}'); print('OK')"`);
+      const result = await runPython(['-c', "import sys; from core.workspace import WorkspaceManager; wm = WorkspaceManager(); wm.initialize_default_workspace(sys.argv[1], sys.argv[2]); print('OK')", String(user_name || ''), String(user_role || '')]);
       res.json({ status: 'initialized', result: result.trim() });
     } catch {
       res.json({ status: 'simulated', message: 'Workspace initialized with default files' });
@@ -540,12 +539,8 @@ app.post('/api/workspace/initialize', async (req, res) => {
 // 8. Session Management (JSONL transcript + liveness)
 app.get('/api/sessions', async (_req, res) => {
   try {
-    const { exec: execC } = await import('child_process');
-    const execAsync2 = (cmd: string) => new Promise<string>((resolve, reject) => {
-      execC(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout) => err ? reject(err) : resolve(stdout));
-    });
     try {
-      const result = await execAsync2('python3 -c "from core.session import SessionManager; sm = SessionManager(); import json; print(json.dumps(sm.list_sessions()))"');
+      const result = await runPython(['-c', 'from core.session import SessionManager; sm = SessionManager(); import json; print(json.dumps(sm.list_sessions()))']);
       res.json(JSON.parse(result));
     } catch {
       res.json([

@@ -40,8 +40,20 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config["JSON_SORT_KEYS"] = False
 
+    # Cache config once; invalidated when settings change.
+    cfg_cache: dict = {"cfg": load_config(require_key=False)}
+
     def _cfg():
-        return load_config(require_key=False)
+        return cfg_cache["cfg"]
+
+    def _check_auth():
+        """Require X-Auth-Token to match AUTH_TOKEN env when it is set."""
+        expected = os.environ.get("AUTH_TOKEN")
+        if not expected:
+            return None  # auth unset -> backwards-compatible open access
+        if request.headers.get("X-Auth-Token") != expected:
+            return jsonify({"error": "unauthorized"}), 401
+        return None
 
     # --- Page ---
     @app.route("/")
@@ -87,8 +99,13 @@ def create_app() -> Flask:
 
     @app.route("/api/settings", methods=["POST"])
     def api_settings_save():
+        denied = _check_auth()
+        if denied is not None:
+            return denied
         body = request.get_json(silent=True) or {}
-        return jsonify(D.save_settings(_cfg(), body))
+        result = D.save_settings(_cfg(), body)
+        cfg_cache["cfg"] = load_config(require_key=False)  # invalidate cached config
+        return jsonify(result)
 
     # --- Industry reference ---
     @app.route("/api/industry")
@@ -123,6 +140,9 @@ def create_app() -> Flask:
     # --- Run trigger ---
     @app.route("/api/run", methods=["POST"])
     def api_run():
+        denied = _check_auth()
+        if denied is not None:
+            return denied
         if os.environ.get("OLLAMA_EVAL_ENABLE_RUN") != "1":
             return jsonify({"ok": False,
                             "error": "run trigger disabled (set OLLAMA_EVAL_ENABLE_RUN=1)"}), 403
@@ -146,8 +166,9 @@ def create_app() -> Flask:
         log_dir.mkdir(parents=True, exist_ok=True)
         log_fh = open(log_dir / "run.log", "a", encoding="utf-8")
         try:
-            subprocess.Popen(argv, cwd=str(PROJECT_ROOT),
-                             stdout=log_fh, stderr=subprocess.STDOUT)
+            proc = subprocess.Popen(argv, cwd=str(PROJECT_ROOT),
+                                    stdout=log_fh, stderr=subprocess.STDOUT)
+            log_fh.close()  # parent's copy; child keeps its inherited handles
             return jsonify({"ok": True, "message": "run started — refresh in ~1 min"})
         except Exception as e:  # noqa: BLE001
             return jsonify({"ok": False, "error": repr(e)}), 500
