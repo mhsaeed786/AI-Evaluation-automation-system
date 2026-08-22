@@ -800,6 +800,15 @@ app.post('/api/security/validate-command', async (req, res, next) => {
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const correlationId = newCorrelationId();
   console.error(`[error] correlationId=${correlationId}`, err);
+  // Honor client-error statuses carried by the error (e.g. body-parser's
+  // malformed-JSON SyntaxError has statusCode=400) instead of blanket-500ing.
+  const anyErr = err as { statusCode?: number; status?: number; type?: string };
+  const status = typeof anyErr?.statusCode === 'number' ? anyErr.statusCode
+    : typeof anyErr?.status === 'number' ? anyErr.status : 500;
+  if (status >= 400 && status < 500) {
+    res.status(status).json({ error: 'invalid request', correlationId });
+    return;
+  }
   res.status(500).json({ error: 'internal error', correlationId });
 });
 
