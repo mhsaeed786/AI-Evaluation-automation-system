@@ -1,12 +1,12 @@
 {
-  "name": "HealthOS-azure-devops",
+  "name": "healthos-azure-devops",
   "type": "mcp-server",
   "description": "HealthOS Azure DevOps connector for work item management",
   "config": {
-    "organization_url": "https://devops.HealthOS.com/HealthOS10g/11g",
+    "organization_url": "https://devops.example.com/HealthOS10g/11g",
     "auth": {
       "type": "browser",
-      "username": "hassan.saeed@HealthOS.com"
+      "username": "hassan.saeed@example.com"
     },
     "operations": ["list_work_items", "create_work_item", "update_work_item", "query_items", "download_repo_zip"]
   }

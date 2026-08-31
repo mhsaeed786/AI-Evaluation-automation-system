@@ -1,0 +1,13 @@
+{
+  "name": "healthos-database",
+  "type": "mcp-server",
+  "description": "HealthOS database connector for Cherry Studio",
+  "config": {
+    "connections": [
+      {"name": "10g-fhir", "server": "APP_SERVER_10G", "database": "FHIR_DB", "username": "healthos", "password": "ENV_DB_PASSWORD"},
+      {"name": "10g-muii", "server": "APP_SERVER_10G", "database": "MUII_DB", "username": "healthos", "password": "ENV_DB_PASSWORD"},
+      {"name": "11x-muii", "server": "APP_SERVER_11X", "database": "MUII_DB", "username": "healthos", "password": "ENV_DB_PASSWORD"}
+    ],
+    "operations": ["query", "execute", "describe_table", "list_tables", "get_schema"]
+  }
+}

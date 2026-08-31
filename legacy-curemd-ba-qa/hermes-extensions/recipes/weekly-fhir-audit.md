@@ -27,5 +27,5 @@ Every Monday at 8:00 AM
 ## Configurable Parameters
 - `environments`: [release01_fhir, baseline11x_fhir]
 - `sample_size`: 50
-- `report_recipients`: [hassan.saeed@HealthOS.com]
+- `report_recipients`: [hassan.saeed@example.com]
 - `notify_on_failure`: true

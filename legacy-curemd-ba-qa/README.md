@@ -120,14 +120,14 @@ Configured in `config/settings.py` with the following environments:
 
 | Environment | Server | Database | Credentials |
 |-------------|--------|----------|-------------|
-| Release01 | Release01 | FHIR_HealthOS | HealthOS / REDACTED-CREDENTIAL |
-| Release01 | Release01 | MUII_HEALTHOS | HealthOS / REDACTED-CREDENTIAL |
-| Baseline 11x | baseline11x_HealthOS | MUII_HEALTHOS | Configurable |
+| APP_SERVER_10G | APP_SERVER_10G | FHIR_DB | healthos / ENV_DB_PASSWORD |
+| APP_SERVER_10G | APP_SERVER_10G | MUII_DB | healthos / ENV_DB_PASSWORD |
+| Baseline 11x | APP_SERVER_11X | MUII_DB | Configurable |
 
 ### Key URLs
 
-- **SharePoint**: `https://HealthOSinc.sharepoint.com/sites/ApplicationImprovementsTeam/`
-- **Azure DevOps**: `https://devops.HealthOS.com/HealthOS10g/11g`
+- **SharePoint**: `https://example.sharepoint.com/sites/ApplicationImprovementsTeam/`
+- **Azure DevOps**: `https://devops.example.com/HealthOS10g/11g`
 
 ### File Paths
 

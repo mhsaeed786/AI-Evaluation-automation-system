@@ -23,7 +23,7 @@ framework: openclaw
 6. Fire event: test-complete with results
 
 ## Configuration
-- `fhir_server`: HealthOS | public
+- `fhir_server`: healthos | public
 - `db_environment`: release01_fhir | baseline11x_fhir
 - `resource_types`: list or "all"
 - `report_format`: html | json | both

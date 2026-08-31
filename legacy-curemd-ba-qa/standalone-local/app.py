@@ -129,7 +129,7 @@ elif page == "FHIR Tools":
 
     with tab1:
         resource_type = st.text_input("Resource Type", "Patient")
-        server = st.selectbox("Server", ["HealthOS", "public"])
+        server = st.selectbox("Server", ["healthos", "public"])
         if st.button("Search"):
             try:
                 from modules.fhir.manifest import fhir_search

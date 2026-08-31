@@ -90,26 +90,26 @@ class Settings:
         """Initialize all database connection configurations."""
         self.databases: Dict[str, DatabaseConfig] = {
             "release01_fhir": DatabaseConfig(
-                server="Release01",
-                database="FHIR_HealthOS",
+                server="APP_SERVER_10G",
+                database="FHIR_DB",
                 username=os.getenv("DB_USER_RELEASE01", ""),
                 password=os.getenv("DB_PASS_RELEASE01", ""),
             ),
             "release01_muii": DatabaseConfig(
-                server="Release01",
-                database="MUII_HEALTHOS",
+                server="APP_SERVER_10G",
+                database="MUII_DB",
                 username=os.getenv("DB_USER_RELEASE01", ""),
                 password=os.getenv("DB_PASS_RELEASE01", ""),
             ),
             "baseline11x_muii": DatabaseConfig(
-                server="baseline11x_HealthOS",
-                database="MUII_HEALTHOS",
+                server="APP_SERVER_11X",
+                database="MUII_DB",
                 username=os.getenv("DB_USER_BASELINE11X", ""),
                 password=os.getenv("DB_PASS_BASELINE11X", ""),
             ),
             "baseline11x_fhir": DatabaseConfig(
-                server="baseline11x_HealthOS",
-                database="FHIR_HealthOS",
+                server="APP_SERVER_11X",
+                database="FHIR_DB",
                 username=os.getenv("DB_USER_BASELINE11X", ""),
                 password=os.getenv("DB_PASS_BASELINE11X", ""),
             ),
@@ -201,13 +201,13 @@ class Settings:
     def _init_urls(self):
         """Initialize external service URLs."""
         self.urls = {
-            "sharepoint_base": "https://HealthOSinc.sharepoint.com/sites/ApplicationImprovementsTeam/",
-            "sharepoint_attachments": "https://HealthOSinc.sharepoint.com/sites/ApplicationImprovementsTeam/Shared%20Documents/",
-            "azure_devops": "https://devops.HealthOS.com/HealthOS10g/11g",
-            "azure_devops_10g": "https://devops.HealthOS.com/HealthOS10g",
-            "azure_devops_11g": "https://devops.HealthOS.com/HealthOS11g",
+            "sharepoint_base": "https://example.sharepoint.com/sites/ApplicationImprovementsTeam/",
+            "sharepoint_attachments": "https://example.sharepoint.com/sites/ApplicationImprovementsTeam/Shared%20Documents/",
+            "azure_devops": "https://devops.example.com/HealthOS10g/11g",
+            "azure_devops_10g": "https://devops.example.com/HealthOS10g",
+            "azure_devops_11g": "https://devops.example.com/HealthOS11g",
             "fhir_server_r4": "http://hapi.fhir.org/baseR4",
-            "fhir_server_HealthOS": os.getenv("FHIR_SERVER_URL", "https://fhir.HealthOS.com/fhir"),
+            "fhir_server_healthos": os.getenv("FHIR_SERVER_URL", "https://fhir.example.com/fhir"),
             "terminology_server": "https://r4.ontoserver.csiro.au/fhir",
             "snomed_browser": "https://browser.ihtsdotools.org",
             "hl7_fhir_base": "https://hl7.org/fhir/R4",
@@ -216,13 +216,13 @@ class Settings:
     def _init_file_mappings(self):
         """Initialize file path mappings from Hassan's super-prompt."""
         self.file_mappings = {
-            "trigger_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\FHIR Triggers",
-            "mapping_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\FHIR Mapping",
-            "uscdi_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\USCDI V3",
-            "provenance_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\Provenance",
-            "scope_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\Scopes",
+            "trigger_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\FHIR Triggers",
+            "mapping_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\FHIR Mapping",
+            "uscdi_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\USCDI V3",
+            "provenance_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\Provenance",
+            "scope_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\Scopes",
             "report_output": str(self.paths.output_dir),
-            "gap_analysis_folder": r"\\HealthOS.com\HealthOSData\ApplicationImprovementTeam\Hassan Ali Laghari\BA-QA Automation\Gap Analysis",
+            "gap_analysis_folder": r"\\example.com\HealthOSData\ApplicationImprovementTeam\analyst\BA-QA Automation\Gap Analysis",
         }
 
     def get_db_config(self, key: str) -> DatabaseConfig:

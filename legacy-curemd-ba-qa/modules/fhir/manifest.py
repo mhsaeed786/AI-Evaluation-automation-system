@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 def fhir_search(
     resource_type: str,
     params: str = "{}",
-    server: str = "HealthOS",
+    server: str = "healthos",
     limit: int = 20,
 ) -> Dict:
     """Search FHIR resources. params is a JSON string of search parameters."""
@@ -35,7 +35,7 @@ def fhir_search(
     from config.settings import get_settings
     settings = get_settings()
 
-    base_url = settings.urls.get("fhir_server_HealthOS" if server == "HealthOS" else "fhir_server_r4")
+    base_url = settings.urls.get("fhir_server_healthos" if server == "healthos" else "fhir_server_r4")
     search_params = json.loads(params) if isinstance(params, str) else params
     search_params.setdefault("_count", limit)
 
@@ -44,12 +44,12 @@ def fhir_search(
 
 
 @tool(name="fhir_read", description="Read a single FHIR resource by ID", module="fhir")
-def fhir_read(resource_type: str, resource_id: str, server: str = "HealthOS") -> Dict:
+def fhir_read(resource_type: str, resource_id: str, server: str = "healthos") -> Dict:
     """Read a single FHIR resource."""
     import httpx
     from config.settings import get_settings
     settings = get_settings()
-    base_url = settings.urls.get("fhir_server_HealthOS" if server == "HealthOS" else "fhir_server_r4")
+    base_url = settings.urls.get("fhir_server_healthos" if server == "healthos" else "fhir_server_r4")
     r = httpx.get(f"{base_url}/{resource_type}/{resource_id}", timeout=30)
     return {"status": r.status_code, "data": r.json() if r.status_code == 200 else r.text}
 
@@ -60,7 +60,7 @@ def fhir_validate(resource_type: str, resource_json: str) -> Dict:
     import httpx
     from config.settings import get_settings
     settings = get_settings()
-    base_url = settings.urls.get("fhir_server_HealthOS")
+    base_url = settings.urls.get("fhir_server_healthos")
     r = httpx.post(
         f"{base_url}/{resource_type}/$validate",
         json=json.loads(resource_json) if isinstance(resource_json, str) else resource_json,
@@ -71,36 +71,36 @@ def fhir_validate(resource_type: str, resource_json: str) -> Dict:
 
 
 @tool(name="fhir_create", description="Create a FHIR resource on the server", module="fhir")
-def fhir_create(resource_type: str, resource_json: str, server: str = "HealthOS") -> Dict:
+def fhir_create(resource_type: str, resource_json: str, server: str = "healthos") -> Dict:
     """Create a FHIR resource."""
     import httpx
     from config.settings import get_settings
     settings = get_settings()
-    base_url = settings.urls.get("fhir_server_HealthOS" if server == "HealthOS" else "fhir_server_r4")
+    base_url = settings.urls.get("fhir_server_healthos" if server == "healthos" else "fhir_server_r4")
     data = json.loads(resource_json) if isinstance(resource_json, str) else resource_json
     r = httpx.post(f"{base_url}/{resource_type}", json=data, headers={"Content-Type": "application/fhir+json"}, timeout=30)
     return {"status": r.status_code, "data": r.json() if r.status_code in (200, 201) else r.text}
 
 
 @tool(name="fhir_update", description="Update a FHIR resource by ID", module="fhir")
-def fhir_update(resource_type: str, resource_id: str, resource_json: str, server: str = "HealthOS") -> Dict:
+def fhir_update(resource_type: str, resource_id: str, resource_json: str, server: str = "healthos") -> Dict:
     """Update a FHIR resource."""
     import httpx
     from config.settings import get_settings
     settings = get_settings()
-    base_url = settings.urls.get("fhir_server_HealthOS" if server == "HealthOS" else "fhir_server_r4")
+    base_url = settings.urls.get("fhir_server_healthos" if server == "healthos" else "fhir_server_r4")
     data = json.loads(resource_json) if isinstance(resource_json, str) else resource_json
     r = httpx.put(f"{base_url}/{resource_type}/{resource_id}", json=data, headers={"Content-Type": "application/fhir+json"}, timeout=30)
     return {"status": r.status_code, "data": r.json() if r.status_code == 200 else r.text}
 
 
 @tool(name="fhir_delete", description="Delete a FHIR resource by ID", module="fhir")
-def fhir_delete(resource_type: str, resource_id: str, server: str = "HealthOS") -> Dict:
+def fhir_delete(resource_type: str, resource_id: str, server: str = "healthos") -> Dict:
     """Delete a FHIR resource."""
     import httpx
     from config.settings import get_settings
     settings = get_settings()
-    base_url = settings.urls.get("fhir_server_HealthOS" if server == "HealthOS" else "fhir_server_r4")
+    base_url = settings.urls.get("fhir_server_healthos" if server == "healthos" else "fhir_server_r4")
     r = httpx.delete(f"{base_url}/{resource_type}/{resource_id}", timeout=30)
     return {"status": r.status_code}
 

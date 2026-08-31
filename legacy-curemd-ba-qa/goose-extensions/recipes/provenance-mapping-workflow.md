@@ -8,8 +8,8 @@ description: Complete provenance resource mapping for 10g and 11x EHRs
 ## Steps
 
 1. **Database Connection Setup**
-   - 10g: Release01/FHIR_HealthOS or MUII_HEALTHOS
-   - 11x: baseline11x_HealthOS/MUII_HEALTHOS
+   - 10g: APP_SERVER_10G/FHIR_DB or MUII_DB
+   - 11x: APP_SERVER_11X/MUII_DB
 
 2. **Audit Trail Analysis**
    - Query tblauditrail for module names

@@ -14,7 +14,7 @@ description: Automated FHIR resource testing, validation, and trigger verificati
 
 1. **Setup Phase**
    - Load config from config/settings.py
-   - Verify database connectivity (Release01/FHIR_HealthOS or baseline11x_HealthOS/MUII_HEALTHOS)
+   - Verify database connectivity (APP_SERVER_10G/FHIR_DB or APP_SERVER_11X/MUII_DB)
    - Check FHIR server health endpoint
 
 2. **Trigger Discovery**

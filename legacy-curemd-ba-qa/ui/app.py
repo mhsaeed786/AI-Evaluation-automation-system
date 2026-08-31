@@ -127,7 +127,7 @@ elif page == "FHIR Tools":
         st.subheader("FHIR Resource Search")
         resource_type = st.text_input("Resource Type", "Patient")
         search_params = st.text_area("Search Params (JSON)", "{}", height=100)
-        server = st.selectbox("Server", ["HealthOS", "public"])
+        server = st.selectbox("Server", ["healthos", "public"])
 
         if st.button("Search"):
             try:

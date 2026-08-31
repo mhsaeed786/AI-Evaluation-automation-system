@@ -1,12 +1,12 @@
 {
-  "name": "HealthOS-database",
+  "name": "healthos-database",
   "type": "database",
   "description": "HealthOS SQL Server connector for Hermes",
   "config": {
     "connections": [
-      {"name": "10g-fhir", "server": "Release01", "database": "FHIR_HealthOS"},
-      {"name": "10g-muii", "server": "Release01", "database": "MUII_HEALTHOS"},
-      {"name": "11x-muii", "server": "baseline11x_HealthOS", "database": "MUII_HEALTHOS"}
+      {"name": "10g-fhir", "server": "APP_SERVER_10G", "database": "FHIR_DB"},
+      {"name": "10g-muii", "server": "APP_SERVER_10G", "database": "MUII_DB"},
+      {"name": "11x-muii", "server": "APP_SERVER_11X", "database": "MUII_DB"}
     ],
     "driver": "ODBC Driver 17 for SQL Server",
     "timeout": 30

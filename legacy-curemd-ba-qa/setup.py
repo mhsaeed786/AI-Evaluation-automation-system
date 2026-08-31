@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="HealthOS-ba-qa-automation-suite",
+    name="healthos-ba-qa-automation-suite",
     version="1.0.0",
     description="HealthOS Business Analyst & QA Automation Suite - Healthcare IT FHIR Testing & Analysis",
     author="HealthOS BA/QA Team",
-    author_email="automation@HealthOS.com",
+    author_email="automation@example.com",
     packages=find_packages(),
     python_requires=">=3.10",
     install_requires=[
@@ -31,7 +31,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "HealthOS-automation=ui.app:main",
+            "healthos-automation=ui.app:main",
         ],
     },
     classifiers=[

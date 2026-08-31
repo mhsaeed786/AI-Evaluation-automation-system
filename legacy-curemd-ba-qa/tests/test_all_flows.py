@@ -324,7 +324,7 @@ def main():
         assert len(servers) >= 5, f"Expected 5+ MCP servers from goose-extensions, got {len(servers)}"
         names = [s["name"] for s in servers]
         assert "llm-router" in names, f"llm-router not in {names}"
-        assert "HealthOS-database" in names
+        assert "healthos-database" in names
         return names
 
     test("MCP loads 5+ servers from goose-extensions", test_mcp)

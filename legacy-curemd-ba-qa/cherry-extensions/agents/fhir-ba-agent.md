@@ -29,9 +29,9 @@ You are a specialized Healthcare IT Business Analyst agent focused on HL7 FHIR i
 - Support multi-turn conversations with context retention
 
 ## Database Knowledge
-- 10g: Release01/FHIR_HealthOS (HealthOS/REDACTED-CREDENTIAL)
-- 10g alt: Release01/MUII_HEALTHOS (HealthOS/REDACTED-CREDENTIAL)
-- 11x: baseline11x_HealthOS/MUII_HEALTHOS (HealthOS/REDACTED-CREDENTIAL)
+- 10g: APP_SERVER_10G/FHIR_DB (healthos/ENV_DB_PASSWORD)
+- 10g alt: APP_SERVER_10G/MUII_DB (healthos/ENV_DB_PASSWORD)
+- 11x: APP_SERVER_11X/MUII_DB (healthos/ENV_DB_PASSWORD)
 
 ## Output Standards
 - Always generate structured user stories with acceptance criteria

@@ -14,4 +14,4 @@ parameters:
   server:
     type: string
     description: FHIR server to query
-    default: HealthOS
+    default: healthos

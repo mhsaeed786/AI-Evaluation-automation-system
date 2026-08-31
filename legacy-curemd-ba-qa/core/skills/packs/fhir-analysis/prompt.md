@@ -13,9 +13,9 @@ Analyze {{resource_type}} resources against HL7 FHIR R4 specification and USCDI 
 5. Cross-reference with database tables (PMPTXFT for Patient, etc.)
 
 ## Database Context
-- 10g FHIR: Release01/FHIR_HealthOS
-- 10g MUII: Release01/MUII_HEALTHOS
-- 11x MUII: baseline11x_HealthOS/MUII_HEALTHOS
+- 10g FHIR: APP_SERVER_10G/FHIR_DB
+- 10g MUII: APP_SERVER_10G/MUII_DB
+- 11x MUII: APP_SERVER_11X/MUII_DB
 
 ## Output Format
 Provide findings as structured:

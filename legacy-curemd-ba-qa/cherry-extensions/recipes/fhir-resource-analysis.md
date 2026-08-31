@@ -17,7 +17,7 @@ framework: cherry
 
 ## Input Parameters
 - `resource_type`: FHIR resource type (Patient, Encounter, etc.)
-- `server`: HealthOS or public
+- `server`: healthos or public
 - `check_uscdi`: boolean, check USCDI V3 compliance
 - `db_key`: database environment for cross-reference
 
