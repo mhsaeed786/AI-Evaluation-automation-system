@@ -43,7 +43,7 @@ export const IntegrationsHub: React.FC = () => {
       category: 'm365',
       name: 'Microsoft 365 & Graph API',
       accountLabel: 'Work Account (HealthOS Corporate)',
-      endpointOrOrg: 'graph.microsoft.com/v1.0 (Tenant: HealthOS.onmicrosoft.com)',
+      endpointOrOrg: 'graph.microsoft.com/v1.0 (Tenant: healthos.onmicrosoft.com)',
       status: 'connected',
       lastSynced: '2 mins ago'
     },
@@ -61,7 +61,7 @@ export const IntegrationsHub: React.FC = () => {
       category: 'slack',
       name: 'Slack Workspace',
       accountLabel: 'HealthOS Engineering Slack',
-      endpointOrOrg: 'HealthOS-dev.slack.com',
+      endpointOrOrg: 'healthos-dev.slack.com',
       status: 'connected',
       lastSynced: '1 min ago'
     },
@@ -70,7 +70,7 @@ export const IntegrationsHub: React.FC = () => {
       category: 'azure_devops',
       name: 'Azure DevOps On-Prem TFS',
       accountLabel: 'On-Prem Server instance',
-      endpointOrOrg: 'tfs.internal.HealthOS.com/DefaultCollection',
+      endpointOrOrg: 'tfs.internal.healthos.com/DefaultCollection',
       status: 'connected',
       lastSynced: '5 mins ago'
     },
@@ -79,7 +79,7 @@ export const IntegrationsHub: React.FC = () => {
       category: 'azure_devops',
       name: 'Azure DevOps Online',
       accountLabel: 'Cloud ADO Account',
-      endpointOrOrg: 'dev.azure.com/HealthOS-cloud',
+      endpointOrOrg: 'dev.azure.com/healthos-cloud',
       status: 'connected',
       lastSynced: '8 mins ago'
     },
@@ -87,8 +87,8 @@ export const IntegrationsHub: React.FC = () => {
       id: 'int-6',
       category: 'github',
       name: 'GitHub Account',
-      accountLabel: 'Org Account (@HealthOS-org)',
-      endpointOrOrg: 'github.com/HealthOS-org',
+      accountLabel: 'Org Account (@healthos-org)',
+      endpointOrOrg: 'github.com/healthos-org',
       status: 'connected',
       lastSynced: '12 mins ago'
     },
@@ -106,7 +106,7 @@ export const IntegrationsHub: React.FC = () => {
       category: 'iot',
       name: 'IoT MQTT Sensor Gateway',
       accountLabel: 'Lab Environment Sensors',
-      endpointOrOrg: 'mqtt://iot-broker.internal.HealthOS.com:1883',
+      endpointOrOrg: 'mqtt://iot-broker.internal.healthos.com:1883',
       status: 'connected',
       lastSynced: '30 secs ago'
     },

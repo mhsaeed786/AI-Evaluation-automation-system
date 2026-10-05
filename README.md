@@ -18,7 +18,7 @@ The repo contains three distinct parts with separate runtimes:
 |---|---|---|---|
 | **Eval harness + dashboard** | `src/`, `harnesses/`, `config/`, `templates/`, `tests/` | Python / Flask | Benchmark evaluation engine (model scoring, deltas, provider comparison) plus its local Flask management UI |
 | **OneAgent Super-App** | `oneagent-super-app/` | TypeScript / Express + React (Vite) | The new generalist-agent app: Express API (`server.ts`), React 19 frontend, Python meta self-authoring core (`core/`) |
-| **Legacy HealthOS BA/QA suite** | `legacy-HealthOS-ba-qa/` | Python / FastAPI | The original automation platform — kept for reference, not part of the new app |
+| **Legacy BA/QA suite** | `legacy-healthos-ba-qa/` | Python / FastAPI | The original automation platform — kept for reference, not part of the new app |
 
 ### Eval harness & dashboard (Python)
 
@@ -66,11 +66,11 @@ npx tsc --noEmit       # type-check frontend + server
 
 ### Legacy HealthOS suite (Python)
 
-Unchanged reference codebase (FastAPI in `legacy-HealthOS-ba-qa/api/main.py`,
+Unchanged reference codebase (FastAPI in `legacy-healthos-ba-qa/api/main.py`,
 which exposes its own `/health` endpoint).
 
 ```bash
-cd legacy-HealthOS-ba-qa
+cd legacy-healthos-ba-qa
 pip install -r requirements.txt
 uvicorn api.main:app --reload   # http://127.0.0.1:8000 (/docs for OpenAPI)
 python -m pytest tests/
@@ -90,7 +90,7 @@ AI-Evaluation-automation-system/
 │   ├── package.json
 │   └── README.md
 │
-└── legacy-HealthOS-ba-qa/         ← 📂 OLD: Python HealthOS BA/QA Automation Suite
+└── legacy-healthos-ba-qa/         ← 📂 OLD: Python HealthOS BA/QA Automation Suite
     ├── api/                     # FastAPI server
     ├── core/                    # Agent loop, LLM router, meta, RAG, skills
     ├── modules/                 # FHIR tools
@@ -196,7 +196,7 @@ npm run dev
 ### Legacy HealthOS Suite (Old)
 
 ```bash
-cd legacy-HealthOS-ba-qa
+cd legacy-healthos-ba-qa
 
 # Python setup
 pip install -r requirements.txt

@@ -44,7 +44,7 @@ export const WorkOpsLimb: React.FC = () => {
             <MessageSquare className="w-4 h-4" />
             <span>Teams Channel Bot</span>
           </div>
-          <p className="text-slate-400 font-sans">Posts nightly FHIR inconsistency digests to #HealthOS-qa-alerts channel.</p>
+          <p className="text-slate-400 font-sans">Posts nightly FHIR inconsistency digests to #healthos-qa-alerts channel.</p>
           <div className="p-2 bg-[#050505] rounded border border-white/10 text-[11px] text-emerald-400">
             Status: Webhook Active
           </div>
